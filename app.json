@@ -3,13 +3,16 @@
     "name": "Mimo",
     "slug": "mimov2",
     "version": "1.0.0",
+    "scheme": "mimo",
     "web": {
+      "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
     "experiments": {
       "tsconfigPaths": true
     },
     "plugins": [
+      "expo-router",
       "expo-sqlite"
     ],
     "orientation": "portrait",
