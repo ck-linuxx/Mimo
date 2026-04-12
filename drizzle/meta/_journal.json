@@ -15,6 +15,13 @@
       "when": 1775248035591,
       "tag": "0001_steady_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1775439249794,
+      "tag": "0002_strong_skullbuster",
+      "breakpoints": true
     }
   ]
 }

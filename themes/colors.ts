@@ -2,6 +2,8 @@ export const darkColors = {
   background: '#0D0D0D',
   cardBackground: '#1A1A1A',
   primaryGold: '#D4AF37',
+  secondaryGold: '#b99727',
+  primaryGoldContrast: '#0D0D0D',
   accentGold: '#F5C242',
   textPrimary: '#FFFFFF',
   textSecondary: '#A6A6A6',
@@ -13,17 +15,19 @@ export const darkColors = {
 } as const;
 
 export const lightColors = {
-  background: '#F5F5F5',
+  background: '#F7F7F5',
   cardBackground: '#FFFFFF',
-  primaryGold: '#B8960C',
-  accentGold: '#D4AF37',
+  primaryGold: '#dcb32e',
+  secondaryGold: '#D4AF37',
+  primaryGoldContrast: '#0D0D0D',
+  accentGold: '#D4A017',
   textPrimary: '#0D0D0D',
-  textSecondary: '#6B6B6B',
-  borderColor: '#E0E0E0',
-  incomeColor: '#22C55E',
-  expenseColor: '#EF4444',
-  disabled: '#C4C4C4',
-  iconBackground: '#EFEFEF',
+  textSecondary: '#595959',
+  borderColor: '#E2E2E2',
+  incomeColor: '#16A34A',
+  expenseColor: '#DC2626',
+  disabled: '#BDBDBD',
+  iconBackground: '#EFEFED',
 } as const;
 
 export type AppColors = typeof darkColors;

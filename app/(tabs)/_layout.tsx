@@ -64,7 +64,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="add-transaction"
+        name="addTransaction"
         options={{
           title: 'Adicionar',
           tabBarIcon: ({ color }) => (

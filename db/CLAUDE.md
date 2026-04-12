@@ -1,9 +1,16 @@
 # db/schema.ts — Documentação do Schema
 
 Stack: Drizzle ORM + expo-sqlite (SQLite local, offline).
-Valores monetários armazenados em **centavos** (integer) para evitar erros de ponto flutuante.
+Valores monetários armazenados como **REAL** (decimal) no SQLite — ex: `120.00`, `1234.56`.
 IDs são TEXT (uuid/cuid gerado na camada de aplicação).
 Timestamps são INTEGER em milissegundos (Date.now()).
+
+## Regra: pasta `types/`
+
+Ao criar uma nova tabela no schema:
+1. Criar `types/<nomeDaTabela>.ts` com os enums TypeScript derivados dos valores do schema e re-exportação dos tipos inferidos (`$inferSelect` / `$inferInsert`).
+2. Adicionar as exportações no `types/index.ts`.
+3. Adicionar uma linha na tabela de módulos do `CLAUDE.md` raiz para a nova pasta se ela for nova.
 
 ---
 
@@ -15,7 +22,7 @@ Categorias para classificar transações (ex: Alimentação, Salário, Lazer).
 
 ### `accounts`
 Contas financeiras do usuário (corrente, poupança, dinheiro, investimento).
-- `balance`: saldo atual em centavos. Editável diretamente pelo usuário.
+- `balance`: saldo atual em reais (decimal, ex: `1500.00`). Editável diretamente pelo usuário.
   - Incrementado (`+amount`) quando uma **receita** vinculada à conta é marcada como paga.
   - Decrementado (`-amount`) quando uma **despesa** paga via conta (sem cartão) é registrada.
   - Revertido se a transação for cancelada ou excluída.
@@ -25,13 +32,13 @@ Contas financeiras do usuário (corrente, poupança, dinheiro, investimento).
 Cartões de crédito do usuário. Todo cartão cadastrado é implicitamente de crédito.
 - Compras no débito não usam cartão — debitam diretamente da conta via `accountId`.
 - `closingDay` / `dueDay`: dia de fechamento e vencimento da fatura (1–31).
-- `creditLimit`: limite do cartão em centavos (nullable).
+- `creditLimit`: limite do cartão em reais decimais (nullable).
 - Vinculado a uma `account` para fins de organização.
 
 ### `financial_goals`
 Metas financeiras (ex: "Viagem para o Japão", "Reserva de emergência").
-- `targetAmount`: valor alvo em centavos.
-- `currentAmount`: progresso atual em centavos. Incrementado quando uma transação vinculada
+- `targetAmount`: valor alvo em reais decimais (ex: `5000.00`).
+- `currentAmount`: progresso atual em reais decimais. Incrementado quando uma transação vinculada
   (`goalId`) é marcada como paga.
 - `deadline`: data limite opcional (timestamp ms).
 - `status`: `active` | `completed` | `cancelled`.
@@ -39,6 +46,7 @@ Metas financeiras (ex: "Viagem para o Japão", "Reserva de emergência").
 ### `transaction_groups`
 Template/agrupador para transações **parceladas** e **recorrentes**.
 - `type`: `installment` (parcelado) ou `recurring` (recorrente sem limite).
+- `amount`: valor em reais decimais (ex: `250.00`).
 - `totalInstallments`: total de parcelas (nullable, apenas para `installment`).
 - `frequency`: periodicidade (`daily` | `weekly` | `monthly` | `yearly`), apenas para `recurring`.
 - `isActive`: quando `false`, para a geração de novas ocorrências recorrentes.
@@ -47,6 +55,7 @@ Template/agrupador para transações **parceladas** e **recorrentes**.
 ### `transactions`
 Ocorrências individuais de movimentações financeiras.
 - `type`: `income` (receita) ou `expense` (despesa).
+- `amount`: valor em reais decimais (ex: `99.90`).
 - `status`: `pending` | `paid` | `cancelled`.
 - `paidAt`: timestamp de quando foi efetivamente pago (null enquanto pendente).
 - `accountId`: conta vinculada (débito/dinheiro). Obrigatório para receitas.

@@ -27,6 +27,19 @@ O `tailwind.config.ts` (raiz do projeto) importa `darkColors` e `lightColors` di
 - Em `colors.ts`: **camelCase** — `cardBackground`, `textPrimary`, `incomeColor`
 - No Tailwind (classes): **kebab-case** — `card-background`, `text-primary`, `income-color` (conversão automática)
 
+### Contraste sobre `primaryGold`
+Qualquer texto, ícone ou borda renderizado **sobre** fundo `primaryGold` deve usar `colors.primaryGoldContrast`. Nunca usar `'#000'` hardcoded nesses contextos.
+
+```tsx
+// Correto
+<Feather color={colors.primaryGoldContrast} />
+<Text style={{ color: colors.primaryGoldContrast }} />
+
+// Proibido
+<Feather color="#000" />
+<Text style={{ color: '#000' }} />
+```
+
 ### Persistência
 - Tabela `settings` com **linha única** (`id = 1`). Upsert com `onConflictDoUpdate` para updates.
 - A row padrão (`id=1, theme='light'`) é criada via `INSERT OR IGNORE` no primeiro uso do hook.

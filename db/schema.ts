@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export type ThemeValue = (typeof themeValues)[number];
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
 export const categories = sqliteTable('categories', {
-  id: text('id').primaryKey(),
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
   icon: text('icon'),
   color: text('color'),
@@ -38,10 +38,10 @@ export const categories = sqliteTable('categories', {
 });
 
 export const accounts = sqliteTable('accounts', {
-  id: text('id').primaryKey(),
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
   type: text('type', { enum: accountTypes }).notNull(),
-  balance: integer('balance').notNull().default(0),
+  balance: real('balance').notNull().default(0),
   color: text('color'),
   icon: text('icon'),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
@@ -50,10 +50,10 @@ export const accounts = sqliteTable('accounts', {
 });
 
 export const cards = sqliteTable('cards', {
-  id: text('id').primaryKey(),
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text('name').notNull(),
   lastFourDigits: text('last_four_digits'),
-  creditLimit: integer('credit_limit'),
+  creditLimit: real('credit_limit'),
   closingDay: integer('closing_day'),
   dueDay: integer('due_day'),
   accountId: text('account_id').references(() => accounts.id),
@@ -63,13 +63,13 @@ export const cards = sqliteTable('cards', {
 });
 
 export const financialGoals = sqliteTable('financial_goals', {
-  id: text('id').primaryKey(),
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   title: text('title').notNull(),
   description: text('description'),
   icon: text('icon'),
   color: text('color'),
-  targetAmount: integer('target_amount').notNull(),
-  currentAmount: integer('current_amount').notNull().default(0),
+  targetAmount: real('target_amount').notNull(),
+  currentAmount: real('current_amount').notNull().default(0),
   deadline: integer('deadline'),
   status: text('status', { enum: goalStatuses }).notNull().default('active'),
   createdAt: integer('created_at').notNull(),
@@ -77,10 +77,10 @@ export const financialGoals = sqliteTable('financial_goals', {
 });
 
 export const transactionGroups = sqliteTable('transaction_groups', {
-  id: text('id').primaryKey(),
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   type: text('type', { enum: groupTypes }).notNull(),
   description: text('description').notNull(),
-  amount: integer('amount').notNull(),
+  amount: real('amount').notNull(),
   transactionType: text('transaction_type', { enum: transactionTypes }).notNull(),
   categoryId: text('category_id').references(() => categories.id),
   accountId: text('account_id').references(() => accounts.id),
@@ -94,9 +94,9 @@ export const transactionGroups = sqliteTable('transaction_groups', {
 });
 
 export const transactions = sqliteTable('transactions', {
-  id: text('id').primaryKey(),
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   description: text('description').notNull(),
-  amount: integer('amount').notNull(),
+  amount: real('amount').notNull(),
   type: text('type', { enum: transactionTypes }).notNull(),
   date: integer('date').notNull(),
   paidAt: integer('paid_at'),
