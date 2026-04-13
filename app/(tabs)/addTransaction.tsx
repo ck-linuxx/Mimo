@@ -1,6 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  FlatList,
   Modal,
   ScrollView,
   Text,
@@ -13,6 +12,7 @@ import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { useForm } from '@tanstack/react-form';
 import { z } from 'zod';
+import { useRouter } from 'expo-router';
 import { transactions, transactionGroups } from 'db/schema';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import {
@@ -23,15 +23,16 @@ import {
   AccountTypeEnum,
 } from 'types';
 import type { Category, Account, Card, FinancialGoal } from 'types';
-import { useCategories } from 'hooks/useCategories';
 import { useAccounts } from 'hooks/useAccounts';
 import { useCards } from 'hooks/useCards';
 import { useGoals } from 'hooks/useGoals';
+import { ActionButton } from 'components/ActionButton';
 import { DatePicker } from 'components/DatePicker';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { addByFrequency } from 'utils/frequency';
+import { setSelectionCallback } from 'utils/selectionStore';
 import {
   type PaymentType,
   ACCOUNT_TYPE_LABELS,
@@ -113,105 +114,7 @@ const defaultValues: FormValues = {
 
 // ─── Modais ────────────────────────────────────────────────────────────────────
 
-interface CategoryModalProps {
-  visible: boolean;
-  transactionType: TransactionTypeEnum;
-  selectedId: string;
-  onSelect: (category: Category) => void;
-  onClose: () => void;
-}
-
-function CategoryModal({ visible, transactionType, selectedId, onSelect, onClose }: CategoryModalProps) {
-  const { theme } = useTheme();
-  const colors = theme === 'dark' ? darkColors : lightColors;
-  const { data: categories, loading } = useCategories(transactionType);
-  const [search, setSearch] = useState('');
-
-  const filtered = useMemo(
-    () => categories.filter((c) => c.name.toLowerCase().includes(search.toLowerCase())),
-    [categories, search],
-  );
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-        <View
-          className="rounded-t-3xl p-6"
-          style={{ backgroundColor: colors.cardBackground, maxHeight: '80%' }}
-        >
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
-              Categoria
-            </Text>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-              <Feather name="x" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          <View
-            className="flex-row items-center rounded-xl px-3 mb-4"
-            style={{ backgroundColor: colors.iconBackground, borderWidth: 1, borderColor: colors.borderColor }}
-          >
-            <Feather name="search" size={18} color={colors.textSecondary} />
-            <TextInput
-              className="flex-1 py-3 px-2 text-base"
-              style={{ color: colors.textPrimary }}
-              placeholder="Buscar categoria"
-              placeholderTextColor={colors.textSecondary}
-              value={search}
-              onChangeText={setSearch}
-            />
-          </View>
-
-          {loading ? (
-            <Text className="text-center py-8" style={{ color: colors.textSecondary }}>
-              Carregando...
-            </Text>
-          ) : (
-            <FlatList
-              data={filtered}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  className="flex-row items-center gap-3 p-3 rounded-xl mb-2"
-                  style={{
-                    backgroundColor: item.id === selectedId
-                      ? colors.primaryGold + '20'
-                      : colors.iconBackground,
-                    borderWidth: 1,
-                    borderColor: item.id === selectedId ? colors.primaryGold : colors.borderColor,
-                  }}
-                  onPress={() => { onSelect(item); onClose(); }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    className="w-10 h-10 rounded-lg items-center justify-center"
-                    style={{ backgroundColor: (item.color ?? colors.primaryGold) + '20' }}
-                  >
-                    <Feather
-                      name={(item.icon as any) ?? 'tag'}
-                      size={20}
-                      color={item.color ?? colors.primaryGold}
-                    />
-                  </View>
-                  <Text className="text-base font-medium" style={{ color: colors.textPrimary }}>
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                <Text className="text-center py-8" style={{ color: colors.textSecondary }}>
-                  Nenhuma categoria encontrada
-                </Text>
-              }
-            />
-          )}
-        </View>
-      </View>
-    </Modal>
-  );
-}
+// CategoryModal substituído por navegação para /(stack)/category (via router.push + selectionStore)
 
 interface AccountCardModalProps {
   visible: boolean;
@@ -248,9 +151,7 @@ function AccountCardModal({
             <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
               {showCards ? 'Conta ou Cartão' : 'Conta'}
             </Text>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-              <Feather name="x" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <ActionButton icon="x" onPress={onClose} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -388,9 +289,7 @@ function GoalModal({ visible, selectedId, onSelect, onClear, onClose }: GoalModa
             <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
               Meta Financeira
             </Text>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-              <Feather name="x" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <ActionButton icon="x" onPress={onClose} />
           </View>
 
           {loading ? (
@@ -465,6 +364,7 @@ export default function AddTransaction() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
   const { showSuccess, showError, showWarning } = useCustomAlert();
+  const router = useRouter();
 
   // Seleções por objeto para exibição
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -473,7 +373,6 @@ export default function AddTransaction() {
   const [selectedGoal, setSelectedGoal] = useState<FinancialGoal | null>(null);
 
   // Visibilidade dos modais
-  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [accountCardModalVisible, setAccountCardModalVisible] = useState(false);
   const [goalModalVisible, setGoalModalVisible] = useState(false);
 
@@ -806,82 +705,83 @@ export default function AddTransaction() {
         {/* Categoria */}
         <form.Field name="categoryId">
           {(field) => (
-            <View>
-              <Text
-                className="font-semibold text-base mb-3"
-                style={{ color: colors.textPrimary }}
-              >
-                Categoria
-              </Text>
-              <TouchableOpacity
-                className="rounded-2xl p-4 flex-row items-center justify-between"
-                style={{
-                  backgroundColor: colors.cardBackground,
-                  borderWidth: 1,
-                  borderColor: field.state.meta.errors.length > 0
-                    ? colors.expenseColor
-                    : colors.borderColor,
-                }}
-                activeOpacity={0.7}
-                onPress={() => setCategoryModalVisible(true)}
-              >
-                {selectedCategory ? (
-                  <View className="flex-row items-center gap-3">
-                    <View
-                      className="w-10 h-10 rounded-lg items-center justify-center"
-                      style={{
-                        backgroundColor: (selectedCategory.color ?? colors.primaryGold) + '20',
-                      }}
-                    >
-                      <Feather
-                        name={(selectedCategory.icon as any) ?? 'tag'}
-                        size={20}
-                        color={selectedCategory.color ?? colors.primaryGold}
-                      />
-                    </View>
-                    <Text
-                      className="text-base font-medium"
-                      style={{ color: colors.textPrimary }}
-                    >
-                      {selectedCategory.name}
-                    </Text>
-                  </View>
-                ) : (
-                  <View className="flex-row items-center gap-3">
-                    <View
-                      className="w-10 h-10 rounded-lg items-center justify-center"
-                      style={{ backgroundColor: colors.iconBackground }}
-                    >
-                      <Feather name="tag" size={20} color={colors.textSecondary} />
-                    </View>
-                    <Text className="text-base" style={{ color: colors.textSecondary }}>
-                      Escolha uma categoria
-                    </Text>
-                  </View>
-                )}
-                <Feather name="chevron-right" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-              {field.state.meta.errors[0] && (
-                <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
-                  {String(field.state.meta.errors[0])}
-                </Text>
-              )}
-
-              <form.Subscribe selector={(s) => s.values.type}>
-                {(type) => (
-                  <CategoryModal
-                    visible={categoryModalVisible}
-                    transactionType={type}
-                    selectedId={field.state.value}
-                    onSelect={(cat) => {
-                      setSelectedCategory(cat);
-                      field.handleChange(cat.id);
+            <form.Subscribe selector={(s) => s.values.type}>
+              {(type) => (
+                <View>
+                  <Text
+                    className="font-semibold text-base mb-3"
+                    style={{ color: colors.textPrimary }}
+                  >
+                    Categoria
+                  </Text>
+                  <TouchableOpacity
+                    className="rounded-2xl p-4 flex-row items-center justify-between"
+                    style={{
+                      backgroundColor: colors.cardBackground,
+                      borderWidth: 1,
+                      borderColor: field.state.meta.errors.length > 0
+                        ? colors.expenseColor
+                        : colors.borderColor,
                     }}
-                    onClose={() => setCategoryModalVisible(false)}
-                  />
-                )}
-              </form.Subscribe>
-            </View>
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      setSelectionCallback<Category>('category', (cat) => {
+                        setSelectedCategory(cat);
+                        field.handleChange(cat.id);
+                      });
+                      router.push({
+                        pathname: '/(stack)/categorySelect',
+                        params: {
+                          transactionType: type,
+                          selectedId: field.state.value,
+                        },
+                      });
+                    }}
+                  >
+                    {selectedCategory ? (
+                      <View className="flex-row items-center gap-3">
+                        <View
+                          className="w-10 h-10 rounded-lg items-center justify-center"
+                          style={{
+                            backgroundColor: (selectedCategory.color ?? colors.primaryGold) + '20',
+                          }}
+                        >
+                          <Feather
+                            name={(selectedCategory.icon as any) ?? 'tag'}
+                            size={20}
+                            color={selectedCategory.color ?? colors.primaryGold}
+                          />
+                        </View>
+                        <Text
+                          className="text-base font-medium"
+                          style={{ color: colors.textPrimary }}
+                        >
+                          {selectedCategory.name}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View className="flex-row items-center gap-3">
+                        <View
+                          className="w-10 h-10 rounded-lg items-center justify-center"
+                          style={{ backgroundColor: colors.iconBackground }}
+                        >
+                          <Feather name="tag" size={20} color={colors.textSecondary} />
+                        </View>
+                        <Text className="text-base" style={{ color: colors.textSecondary }}>
+                          Escolha uma categoria
+                        </Text>
+                      </View>
+                    )}
+                    <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                  {field.state.meta.errors[0] && (
+                    <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
+                      {String(field.state.meta.errors[0])}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </form.Subscribe>
           )}
         </form.Field>
 
@@ -895,6 +795,7 @@ export default function AddTransaction() {
             />
           )}
         </form.Field>
+
 
         {/* Conta / Cartão */}
         <form.Field name="accountId">
