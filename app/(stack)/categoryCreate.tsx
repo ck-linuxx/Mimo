@@ -19,6 +19,7 @@ import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { eq } from 'drizzle-orm';
 import { categories } from 'db/schema';
 import { consumeSelectionCallback } from 'utils/selectionStore';
+import { generateId } from 'utils/generateId';
 import { PRESET_COLORS, CATEGORY_ICONS } from 'utils/categoryConstants';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
@@ -115,7 +116,7 @@ export default function CategoryCreateScreen() {
     setIsSubmitting(true);
     try {
       const now = Date.now();
-      const id = crypto.randomUUID();
+      const id = generateId();
 
       await db.insert(categories).values({
         id,

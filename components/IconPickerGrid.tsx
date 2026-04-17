@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ScrollView, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors } from 'themes/colors';
-import { CATEGORY_ICONS } from 'utils/categoryConstants';
+import { CATEGORY_ICONS, PRESET_COLORS } from 'utils/categoryConstants';
 import { ActionButton } from 'components/ActionButton';
 
 // ─── Constantes de layout ──────────────────────────────────────────────────────
@@ -290,5 +290,81 @@ export function IconPickerGrid({
         />
       </View>
     </View>
+  );
+}
+
+// ─── ColorPickerCarousel ──────────────────────────────────────────────────────
+
+interface AnimatedColorItemProps {
+  color: string;
+  isSelected: boolean;
+  primaryGold: string;
+  onPress: () => void;
+}
+
+function AnimatedColorItem({ color, isSelected, primaryGold, onPress }: AnimatedColorItemProps) {
+  const scale = useSharedValue(isSelected ? 1.2 : 1);
+
+  useEffect(() => {
+    if (isSelected) {
+      scale.value = withSpring(1.2, { damping: 6, stiffness: 400, mass: 0.6 });
+    } else {
+      scale.value = withSpring(1, { damping: 14, stiffness: 400 });
+    }
+  }, [isSelected, scale]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+      <Animated.View
+        style={[
+          {
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: color,
+            borderWidth: isSelected ? 3 : 2,
+            borderColor: isSelected ? primaryGold : 'transparent',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+          animStyle,
+        ]}
+      >
+        {isSelected && <Feather name="check" size={18} color="#fff" />}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+export interface ColorPickerCarouselProps {
+  selectedColor: string;
+  onSelectColor: (color: string) => void;
+  colors: typeof darkColors | typeof lightColors;
+}
+
+export function ColorPickerCarousel({
+  selectedColor,
+  onSelectColor,
+  colors,
+}: ColorPickerCarouselProps) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 12, paddingRight: 8, paddingVertical: 5 }}>
+      {PRESET_COLORS.map((color) => (
+        <AnimatedColorItem
+          key={color}
+          color={color}
+          isSelected={selectedColor === color}
+          primaryGold={colors.primaryGold}
+          onPress={() => onSelectColor(color)}
+        />
+      ))}
+    </ScrollView>
   );
 }

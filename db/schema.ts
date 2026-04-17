@@ -1,4 +1,5 @@
 import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { generateId } from 'utils/generateId';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ export type ThemeValue = (typeof themeValues)[number];
 // ─── Tables ───────────────────────────────────────────────────────────────────
 
 export const categories = sqliteTable('categories', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey().$defaultFn(generateId),
   name: text('name').notNull(),
   icon: text('icon'),
   color: text('color'),
@@ -38,7 +39,7 @@ export const categories = sqliteTable('categories', {
 });
 
 export const accounts = sqliteTable('accounts', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey().$defaultFn(generateId),
   name: text('name').notNull(),
   type: text('type', { enum: accountTypes }).notNull(),
   balance: real('balance').notNull().default(0),
@@ -50,7 +51,7 @@ export const accounts = sqliteTable('accounts', {
 });
 
 export const cards = sqliteTable('cards', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey().$defaultFn(generateId),
   name: text('name').notNull(),
   lastFourDigits: text('last_four_digits'),
   creditLimit: real('credit_limit'),
@@ -63,7 +64,7 @@ export const cards = sqliteTable('cards', {
 });
 
 export const financialGoals = sqliteTable('financial_goals', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey().$defaultFn(generateId),
   title: text('title').notNull(),
   description: text('description'),
   icon: text('icon'),
@@ -77,7 +78,7 @@ export const financialGoals = sqliteTable('financial_goals', {
 });
 
 export const transactionGroups = sqliteTable('transaction_groups', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey().$defaultFn(generateId),
   type: text('type', { enum: groupTypes }).notNull(),
   description: text('description').notNull(),
   amount: real('amount').notNull(),
@@ -94,7 +95,7 @@ export const transactionGroups = sqliteTable('transaction_groups', {
 });
 
 export const transactions = sqliteTable('transactions', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey().$defaultFn(generateId),
   description: text('description').notNull(),
   amount: real('amount').notNull(),
   type: text('type', { enum: transactionTypes }).notNull(),

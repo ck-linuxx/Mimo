@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCategories } from 'hooks/useCategories';
 import { EntitySelector } from 'components/EntitySelector';
 import { consumeSelectionCallback } from 'utils/selectionStore';
@@ -20,9 +20,11 @@ export default function CategorySelectScreen() {
     selectedId?: string;
   }>();
 
-  const { data: categories, loading } = useCategories(
+  const { data: categories, loading, refetch } = useCategories(
     transactionType ?? TransactionTypeEnum.Expense,
   );
+
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
   const handleSelect = useCallback(
     (category: Category) => {

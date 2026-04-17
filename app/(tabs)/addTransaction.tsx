@@ -14,6 +14,7 @@ import { useForm } from '@tanstack/react-form';
 import { z } from 'zod';
 import { useRouter } from 'expo-router';
 import { transactions, transactionGroups } from 'db/schema';
+import { generateId } from 'utils/generateId';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import {
   TransactionTypeEnum,
@@ -25,12 +26,12 @@ import {
 import type { Category, Account, Card, FinancialGoal } from 'types';
 import { useAccounts } from 'hooks/useAccounts';
 import { useCards } from 'hooks/useCards';
-import { useGoals } from 'hooks/useGoals';
 import { ActionButton } from 'components/ActionButton';
 import { DatePicker } from 'components/DatePicker';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { useCustomAlert } from 'hooks/useCustomAlert';
+import { CustomAlert } from 'components/CustomAlert';
 import { addByFrequency } from 'utils/frequency';
 import { setSelectionCallback } from 'utils/selectionStore';
 import {
@@ -265,105 +266,12 @@ function AccountCardModal({
   );
 }
 
-interface GoalModalProps {
-  visible: boolean;
-  selectedId: string;
-  onSelect: (goal: FinancialGoal) => void;
-  onClear: () => void;
-  onClose: () => void;
-}
-
-function GoalModal({ visible, selectedId, onSelect, onClear, onClose }: GoalModalProps) {
-  const { theme } = useTheme();
-  const colors = theme === 'dark' ? darkColors : lightColors;
-  const { data: goals, loading } = useGoals();
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-        <View
-          className="rounded-t-3xl p-6"
-          style={{ backgroundColor: colors.cardBackground, maxHeight: '70%' }}
-        >
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
-              Meta Financeira
-            </Text>
-            <ActionButton icon="x" onPress={onClose} />
-          </View>
-
-          {loading ? (
-            <Text className="text-center py-8" style={{ color: colors.textSecondary }}>
-              Carregando...
-            </Text>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {selectedId && (
-                <TouchableOpacity
-                  className="flex-row items-center gap-3 p-3 rounded-xl mb-2"
-                  style={{
-                    backgroundColor: colors.iconBackground,
-                    borderWidth: 1,
-                    borderColor: colors.borderColor,
-                  }}
-                  onPress={() => { onClear(); onClose(); }}
-                  activeOpacity={0.7}
-                >
-                  <Feather name="x-circle" size={20} color={colors.textSecondary} />
-                  <Text className="text-base" style={{ color: colors.textSecondary }}>
-                    Remover meta
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {goals.length === 0 ? (
-                <Text className="text-center py-8" style={{ color: colors.textSecondary }}>
-                  Nenhuma meta ativa
-                </Text>
-              ) : (
-                goals.map((goal) => (
-                  <TouchableOpacity
-                    key={goal.id}
-                    className="flex-row items-center gap-3 p-3 rounded-xl mb-2"
-                    style={{
-                      backgroundColor: goal.id === selectedId
-                        ? colors.primaryGold + '20'
-                        : colors.iconBackground,
-                      borderWidth: 1,
-                      borderColor: goal.id === selectedId ? colors.primaryGold : colors.borderColor,
-                    }}
-                    onPress={() => { onSelect(goal); onClose(); }}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      className="w-10 h-10 rounded-lg items-center justify-center"
-                      style={{ backgroundColor: (goal.color ?? colors.primaryGold) + '20' }}
-                    >
-                      <Feather
-                        name={(goal.icon as any) ?? 'target'}
-                        size={20}
-                        color={goal.color ?? colors.primaryGold}
-                      />
-                    </View>
-                    <Text className="text-base font-medium" style={{ color: colors.textPrimary }}>
-                      {goal.title}
-                    </Text>
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          )}
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 // ─── Tela Principal ────────────────────────────────────────────────────────────
 
 export default function AddTransaction() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
-  const { showSuccess, showError, showWarning } = useCustomAlert();
+  const { alertConfig, visible, hideAlert, showSuccess, showError, showWarning } = useCustomAlert();
   const router = useRouter();
 
   // Seleções por objeto para exibição
@@ -374,7 +282,6 @@ export default function AddTransaction() {
 
   // Visibilidade dos modais
   const [accountCardModalVisible, setAccountCardModalVisible] = useState(false);
-  const [goalModalVisible, setGoalModalVisible] = useState(false);
 
   // Display do campo valor (formatação BRL)
   const [amountDisplay, setAmountDisplay] = useState('');
@@ -396,7 +303,7 @@ export default function AddTransaction() {
 
         if (value.paymentType === 'single') {
           await db.insert(transactions).values({
-            id: crypto.randomUUID(),
+            id: generateId(),
             description: value.description,
             amount: value.amount,
             type: value.type,
@@ -411,7 +318,7 @@ export default function AddTransaction() {
             updatedAt: now,
           });
         } else if (value.paymentType === GroupTypeEnum.Installment) {
-          const groupId = crypto.randomUUID();
+          const groupId = generateId();
           const totalAmount = value.isInstallmentValue
             ? value.amount * value.installments
             : value.amount;
@@ -438,7 +345,7 @@ export default function AddTransaction() {
             const installDate = new Date(value.date);
             installDate.setMonth(installDate.getMonth() + (i - 1));
             await db.insert(transactions).values({
-              id: crypto.randomUUID(),
+              id: generateId(),
               description: `${value.description} (${i}/${value.installments})`,
               amount: installmentAmount,
               type: value.type,
@@ -456,7 +363,7 @@ export default function AddTransaction() {
             });
           }
         } else if (value.paymentType === GroupTypeEnum.Recurring) {
-          const groupId = crypto.randomUUID();
+          const groupId = generateId();
           await db.insert(transactionGroups).values({
             id: groupId,
             type: GroupTypeEnum.Recurring,
@@ -475,7 +382,7 @@ export default function AddTransaction() {
           for (let i = 0; i < 12; i++) {
             const recurringDate = addByFrequency(value.date, value.frequency as FrequencyEnum, i);
             await db.insert(transactions).values({
-              id: crypto.randomUUID(),
+              id: generateId(),
               description: value.description,
               amount: value.amount,
               type: value.type,
@@ -1152,7 +1059,16 @@ export default function AddTransaction() {
                   borderWidth: 1,
                   borderColor: colors.borderColor,
                 }}
-                onPress={() => setGoalModalVisible(true)}
+                onPress={() => {
+                  setSelectionCallback<FinancialGoal>('goal', (goal) => {
+                    setSelectedGoal(goal);
+                    field.handleChange(goal.id);
+                  });
+                  router.push({
+                    pathname: '/(stack)/goalSelect',
+                    params: { selectedId: field.state.value },
+                  });
+                }}
                 activeOpacity={0.7}
               >
                 {selectedGoal ? (
@@ -1192,19 +1108,22 @@ export default function AddTransaction() {
                 <Feather name="chevron-right" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
 
-              <GoalModal
-                visible={goalModalVisible}
-                selectedId={field.state.value}
-                onSelect={(goal) => {
-                  setSelectedGoal(goal);
-                  field.handleChange(goal.id);
-                }}
-                onClear={() => {
-                  setSelectedGoal(null);
-                  field.handleChange('');
-                }}
-                onClose={() => setGoalModalVisible(false)}
-              />
+              {/* Botão para limpar meta selecionada */}
+              {field.state.value && (
+                <TouchableOpacity
+                  className="flex-row items-center gap-2 mt-2 px-1"
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    setSelectedGoal(null);
+                    field.handleChange('');
+                  }}
+                >
+                  <Feather name="x-circle" size={14} color={colors.textSecondary} />
+                  <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                    Remover meta
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </form.Field>
@@ -1308,6 +1227,15 @@ export default function AddTransaction() {
           )}
         </form.Subscribe>
       </ScrollView>
+      <CustomAlert
+        visible={visible}
+        type={alertConfig?.type}
+        title={alertConfig?.title ?? ''}
+        message={alertConfig?.message}
+        buttons={alertConfig?.buttons}
+        autoClose={alertConfig?.autoClose}
+        onClose={hideAlert}
+      />
     </ScreenWrapper>
   );
 }

@@ -5,6 +5,8 @@ export default function StackGroupLayout() {
     <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="categorySelect" />
       <Stack.Screen name="categoryCreate" />
+      <Stack.Screen name="goalSelect" />
+      <Stack.Screen name="goalCreate" />
     </Stack>
   );
 }

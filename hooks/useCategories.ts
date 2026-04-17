@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { or, eq } from 'drizzle-orm';
@@ -13,12 +13,16 @@ interface UseCategoriesResult {
   data: Category[];
   loading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 export function useCategories(transactionType: TransactionTypeEnum): UseCategoriesResult {
   const [data, setData] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
     setLoading(true);
@@ -41,7 +45,7 @@ export function useCategories(transactionType: TransactionTypeEnum): UseCategori
     } finally {
       setLoading(false);
     }
-  }, [transactionType]);
+  }, [transactionType, refreshKey]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch };
 }
