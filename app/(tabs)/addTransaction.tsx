@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import {
-  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -24,9 +23,6 @@ import {
   AccountTypeEnum,
 } from 'types';
 import type { Category, Account, Card, FinancialGoal } from 'types';
-import { useAccounts } from 'hooks/useAccounts';
-import { useCards } from 'hooks/useCards';
-import { ActionButton } from 'components/ActionButton';
 import { DatePicker } from 'components/DatePicker';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
@@ -115,156 +111,7 @@ const defaultValues: FormValues = {
 
 // ─── Modais ────────────────────────────────────────────────────────────────────
 
-// CategoryModal substituído por navegação para /(stack)/category (via router.push + selectionStore)
-
-interface AccountCardModalProps {
-  visible: boolean;
-  selectedAccountId: string;
-  selectedCardId: string;
-  showCards: boolean;
-  onSelectAccount: (account: Account) => void;
-  onSelectCard: (card: Card) => void;
-  onClose: () => void;
-}
-
-function AccountCardModal({
-  visible,
-  selectedAccountId,
-  selectedCardId,
-  showCards,
-  onSelectAccount,
-  onSelectCard,
-  onClose,
-}: AccountCardModalProps) {
-  const { theme } = useTheme();
-  const colors = theme === 'dark' ? darkColors : lightColors;
-  const { data: accounts, loading: loadingAccounts } = useAccounts();
-  const { data: cards, loading: loadingCards } = useCards();
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-        <View
-          className="rounded-t-3xl p-6"
-          style={{ backgroundColor: colors.cardBackground, maxHeight: '80%' }}
-        >
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
-              {showCards ? 'Conta ou Cartão' : 'Conta'}
-            </Text>
-            <ActionButton icon="x" onPress={onClose} />
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text className="text-sm font-semibold mb-2" style={{ color: colors.textSecondary }}>
-              CONTAS
-            </Text>
-            {loadingAccounts ? (
-              <Text className="text-center py-4" style={{ color: colors.textSecondary }}>
-                Carregando...
-              </Text>
-            ) : (
-              accounts.map((account) => (
-                <TouchableOpacity
-                  key={account.id}
-                  className="flex-row items-center gap-3 p-3 rounded-xl mb-2"
-                  style={{
-                    backgroundColor: account.id === selectedAccountId
-                      ? colors.primaryGold + '20'
-                      : colors.iconBackground,
-                    borderWidth: 1,
-                    borderColor: account.id === selectedAccountId
-                      ? colors.primaryGold
-                      : colors.borderColor,
-                  }}
-                  onPress={() => { onSelectAccount(account); onClose(); }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    className="w-10 h-10 rounded-lg items-center justify-center"
-                    style={{ backgroundColor: (account.color ?? colors.primaryGold) + '20' }}
-                  >
-                    <Feather
-                      name={(account.icon as any) ?? 'briefcase'}
-                      size={20}
-                      color={account.color ?? colors.primaryGold}
-                    />
-                  </View>
-                  <View>
-                    <Text className="text-base font-medium" style={{ color: colors.textPrimary }}>
-                      {account.name}
-                    </Text>
-                    <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                      {ACCOUNT_TYPE_LABELS[account.type as AccountTypeEnum]}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-
-            {showCards && (
-              <>
-                <Text
-                  className="text-sm font-semibold mb-2 mt-4"
-                  style={{ color: colors.textSecondary }}
-                >
-                  CARTÕES
-                </Text>
-                {loadingCards ? (
-                  <Text className="text-center py-4" style={{ color: colors.textSecondary }}>
-                    Carregando...
-                  </Text>
-                ) : (
-                  cards.map((card) => (
-                    <TouchableOpacity
-                      key={card.id}
-                      className="flex-row items-center gap-3 p-3 rounded-xl mb-2"
-                      style={{
-                        backgroundColor: card.id === selectedCardId
-                          ? colors.primaryGold + '20'
-                          : colors.iconBackground,
-                        borderWidth: 1,
-                        borderColor: card.id === selectedCardId
-                          ? colors.primaryGold
-                          : colors.borderColor,
-                      }}
-                      onPress={() => { onSelectCard(card); onClose(); }}
-                      activeOpacity={0.7}
-                    >
-                      <View
-                        className="w-10 h-10 rounded-lg items-center justify-center"
-                        style={{ backgroundColor: (card.color ?? colors.expenseColor) + '20' }}
-                      >
-                        <Feather
-                          name="credit-card"
-                          size={20}
-                          color={card.color ?? colors.expenseColor}
-                        />
-                      </View>
-                      <View>
-                        <Text
-                          className="text-base font-medium"
-                          style={{ color: colors.textPrimary }}
-                        >
-                          {card.name}
-                        </Text>
-                        {card.lastFourDigits && (
-                          <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                            •••• {card.lastFourDigits}
-                          </Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  ))
-                )}
-              </>
-            )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-}
+// CategoryModal e AccountCardModal substituídos por navegação (via router.push + selectionStore)
 
 // ─── Tela Principal ────────────────────────────────────────────────────────────
 
@@ -280,9 +127,6 @@ export default function AddTransaction() {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<FinancialGoal | null>(null);
 
-  // Visibilidade dos modais
-  const [accountCardModalVisible, setAccountCardModalVisible] = useState(false);
-
   // Display do campo valor (formatação BRL)
   const [amountDisplay, setAmountDisplay] = useState('');
   const [installmentsDisplay, setInstallmentsDisplay] = useState('2');
@@ -294,6 +138,16 @@ export default function AddTransaction() {
       if (!validation.success) {
         const firstIssue = validation.error.issues[0];
         showWarning('Dados inválidos', firstIssue.message);
+        return;
+      }
+
+      if (!value.accountId && !value.cardId) {
+        showWarning(
+          'Selecione um método de pagamento',
+          value.type === TransactionTypeEnum.Income
+            ? 'Selecione uma conta bancária para registrar a receita.'
+            : 'Selecione uma conta ou cartão para registrar a despesa.',
+        );
         return;
       }
 
@@ -346,7 +200,7 @@ export default function AddTransaction() {
             installDate.setMonth(installDate.getMonth() + (i - 1));
             await db.insert(transactions).values({
               id: generateId(),
-              description: `${value.description} (${i}/${value.installments})`,
+              description: value.description,
               amount: installmentAmount,
               type: value.type,
               date: installDate.getTime(),
@@ -726,7 +580,32 @@ export default function AddTransaction() {
                           borderColor: colors.borderColor,
                         }}
                         activeOpacity={0.7}
-                        onPress={() => setAccountCardModalVisible(true)}
+                        onPress={() => {
+                          setSelectionCallback<{ type: 'account' | 'card'; item: Account | Card }>(
+                            'paymentMethod',
+                            (result) => {
+                              if (result.type === 'account') {
+                                setSelectedAccount(result.item as Account);
+                                setSelectedCard(null);
+                                accountField.handleChange((result.item as Account).id);
+                                cardField.handleChange('');
+                              } else {
+                                setSelectedCard(result.item as Card);
+                                setSelectedAccount(null);
+                                cardField.handleChange((result.item as Card).id);
+                                accountField.handleChange('');
+                              }
+                            },
+                          );
+                          router.push({
+                            pathname: '/(stack)/paymentMethodSelect',
+                            params: {
+                              transactionType: type,
+                              selectedAccountId: accountField.state.value,
+                              selectedCardId: cardField.state.value,
+                            },
+                          });
+                        }}
                       >
                         {selectedAccount ? (
                           <View className="flex-row items-center gap-3">
@@ -803,25 +682,6 @@ export default function AddTransaction() {
                         <Feather name="chevron-right" size={20} color={colors.textSecondary} />
                       </TouchableOpacity>
 
-                      <AccountCardModal
-                        visible={accountCardModalVisible}
-                        selectedAccountId={accountField.state.value}
-                        selectedCardId={cardField.state.value}
-                        showCards={type === TransactionTypeEnum.Expense}
-                        onSelectAccount={(acc) => {
-                          setSelectedAccount(acc);
-                          setSelectedCard(null);
-                          accountField.handleChange(acc.id);
-                          cardField.handleChange('');
-                        }}
-                        onSelectCard={(card) => {
-                          setSelectedCard(card);
-                          setSelectedAccount(null);
-                          cardField.handleChange(card.id);
-                          accountField.handleChange('');
-                        }}
-                        onClose={() => setAccountCardModalVisible(false)}
-                      />
                     </View>
                   )}
                 </form.Subscribe>
@@ -830,7 +690,6 @@ export default function AddTransaction() {
           )}
         </form.Field>
 
-        {/* Tipo de Pagamento */}
         <form.Field name="paymentType">
           {(field) => (
             <View>
@@ -1007,10 +866,8 @@ export default function AddTransaction() {
                       {FREQUENCY_OPTIONS.map((item) => (
                         <TouchableOpacity
                           key={item.key}
-                          className="rounded-xl p-2 items-center justify-center"
+                          className="flex-1 min-w-[45%] rounded-xl p-3 items-center"
                           style={{
-                            minWidth: '45%',
-                            flex: 1,
                             backgroundColor:
                               field.state.value === item.key
                                 ? colors.primaryGold

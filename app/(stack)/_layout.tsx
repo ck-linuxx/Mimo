@@ -7,6 +7,10 @@ export default function StackGroupLayout() {
       <Stack.Screen name="categoryCreate" />
       <Stack.Screen name="goalSelect" />
       <Stack.Screen name="goalCreate" />
+      <Stack.Screen name="editTransaction" />
+      <Stack.Screen name="paymentMethodSelect" />
+      <Stack.Screen name="accountCreate" />
+      <Stack.Screen name="cardCreate" />
     </Stack>
   );
 }

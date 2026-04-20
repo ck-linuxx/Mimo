@@ -6,7 +6,6 @@ export type PaymentType = 'single' | GroupTypeEnum;
 export const ACCOUNT_TYPE_LABELS: Record<AccountTypeEnum, string> = {
   [AccountTypeEnum.Checking]: 'Conta Corrente',
   [AccountTypeEnum.Savings]: 'Poupança',
-  [AccountTypeEnum.Cash]: 'Dinheiro',
   [AccountTypeEnum.Investment]: 'Investimento',
 };
 

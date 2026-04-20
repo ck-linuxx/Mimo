@@ -4,29 +4,62 @@ Componentes React Native reutilizáveis na interface da aplicação.
 
 ## Regras de Theming
 
-### Classes Tailwind (NativeWind)
-Sempre usar os tokens definidos em `themes/colors.ts` via classes Tailwind:
+### Classes Tailwind (NativeWind) — padrão preferido
+
+Sempre usar `className` com os tokens do `tailwind.config.ts`. Os tokens seguem o padrão `light-<kebab>` / `dark-<kebab>` (camelCase → kebab-case com namespace de tema):
 
 ```tsx
-// Correto
-<View className="bg-cardBackground" />
-<Text className="text-textPrimary" />
+// ✅ Correto — backgrounds, bordas e textos via className
+<View className="bg-light-card-background dark:bg-dark-card-background" />
+<View className="border border-light-border-color dark:border-dark-border-color" />
+<Text className="text-light-text-primary dark:text-dark-text-primary" />
+<Text className="text-light-text-secondary dark:text-dark-text-secondary" />
+<Text className="text-light-disabled dark:text-dark-disabled" />
 
-// Proibido — nunca hardcode hex no className
+// ✅ Opacidade com /XX diretamente no token
+<View className="bg-light-primary-gold/20 dark:bg-dark-primary-gold/20" />
+
+// ❌ Proibido — nunca hardcode hex ou rgba
 <View className="bg-[#1A1A1A]" />
+<View style={{ backgroundColor: 'rgba(255,255,255,0.08)' }} />
 ```
 
-### Cores em `style={{}}`
-Para propriedades que não suportam classe Tailwind (ex: `borderColor`, `backgroundColor` dinâmico), importar `darkColors` ou `lightColors` de `themes/colors.ts`:
+**Referência de tokens** (camelCase → className):
+
+| Token em `colors.ts` | Classe de exemplo |
+|----------------------|-------------------|
+| `background` | `bg-light-background dark:bg-dark-background` |
+| `cardBackground` | `bg-light-card-background dark:bg-dark-card-background` |
+| `borderColor` | `border-light-border-color dark:border-dark-border-color` |
+| `iconBackground` | `bg-light-icon-background dark:bg-dark-icon-background` |
+| `textPrimary` | `text-light-text-primary dark:text-dark-text-primary` |
+| `textSecondary` | `text-light-text-secondary dark:text-dark-text-secondary` |
+| `disabled` | `text-light-disabled dark:text-dark-disabled` |
+| `primaryGold` | `bg-light-primary-gold dark:bg-dark-primary-gold` |
+| `primaryGold/20` | `bg-light-primary-gold/20 dark:bg-dark-primary-gold/20` |
+| `incomeColor` | `bg-light-income-color dark:bg-dark-income-color` |
+| `expenseColor` | `bg-light-expense-color dark:bg-dark-expense-color` |
+
+### Cores em `style={{}}` — somente quando necessário
+
+Usar `style` apenas para propriedades que `className` não suporta:
+- Cor de ícones `Feather` (a prop `color` não aceita classe)
+- Valores computados dinâmicos (ex: cor vinda de dado do banco)
+- Propriedades numéricas de layout sem equivalente Tailwind (ex: `maxWidth: 400`)
 
 ```tsx
-import { darkColors } from 'themes/colors';
+import { darkColors, lightColors } from 'themes/colors';
+import { useTheme } from 'themes';
 
-<View style={{ borderColor: darkColors.primaryGold }} />
-<View style={{ backgroundColor: darkColors.primaryGold + '20' }} /> // 20 = 12% opacidade
+const { theme } = useTheme();
+const colors = theme === 'dark' ? darkColors : lightColors;
+
+// ✅ style apenas onde className não alcança
+<Feather name="star" size={20} color={colors.primaryGold} />
+<View style={{ maxWidth: 400 }} className="bg-light-card-background dark:bg-dark-card-background" />
 ```
 
-> **Contraste sobre `primaryGold`**: Quando `backgroundColor` for `colors.primaryGold`, usar `colors.primaryGoldContrast` para `color` de textos/ícones e `borderColor` de contornos — nunca `'#000'` direto.
+> **Contraste sobre `primaryGold`**: Quando `backgroundColor` for `primaryGold`, usar `colors.primaryGoldContrast` para `color` de textos/ícones — nunca `'#000'` direto.
 
 **Não importar de `constants/Colors`** — esse módulo não existe neste projeto.
 
@@ -51,24 +84,35 @@ O hook também precisa renderizar o componente `CustomAlert` na árvore, quando 
 
 A aplicação deve ser fluida. **Todo componente interativo deve ter animação.** Usar exclusivamente `react-native-reanimated` (já instalado) — nunca `Animated` do React Native core.
 
-### Seleção / Toggle (bounce)
+### Constantes de spring — fonte única de verdade
 
-Quando o usuário seleciona um item (cor, ícone, opção de toggle, chip), aplicar spring com bounce:
+Defina as constantes no topo do arquivo e reutilize em todos os `withSpring`. Isso garante que todos os elementos animados tenham o mesmo "peso" visual.
+
+```ts
+// Botões e controles interativos: bounce rápido e fluido
+const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
+
+// Entrada / saída de modal ou bottom sheet: bounce leve
+const SPRING_MODAL  = { damping: 55, stiffness: 700 } as const;
+```
+
+> **Regra:** nunca passar literais `{ damping: X, stiffness: Y }` diretamente em `withSpring()`. Use sempre uma das constantes acima (ou adicione uma nova nesta lista se nenhuma se encaixar).
+
+### Botões / controles interativos (bounce)
+
+Botões de ação (ex: FAB, chips de filtro, toggles) devem aplicar spring com bounce ao receber pressão:
 
 ```tsx
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useEffect } from 'react';
 
-function AnimatedSelectableItem({ isSelected, ... }) {
-  const scale = useSharedValue(isSelected ? 1.15 : 1);
+function AnimatedButton({ isActive, ... }) {
+  const scale = useSharedValue(isActive ? 1.15 : 1);
 
   useEffect(() => {
-    scale.value = withSpring(isSelected ? 1.15 : 1, {
-      damping: 8,    // baixo = mais bounce
-      stiffness: 400,
-      mass: 0.6,
-    });
-  }, [isSelected, scale]);
+    scale.value = withSpring(isActive ? 1.15 : 1, SPRING_BOUNCE);
+    //                                             ^^^^^^^^^^^^^ usar a constante, nunca literal
+  }, [isActive, scale]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -78,30 +122,64 @@ function AnimatedSelectableItem({ isSelected, ... }) {
 }
 ```
 
-**Parâmetros de referência rápida:**
+### Destaques de seleção (fade)
 
-| Caso | damping | stiffness | mass | Efeito |
-|------|---------|-----------|------|--------|
-| Bounce forte (cor/ícone selecionado) | 6–8 | 400 | 0.6 | Ultrapassa e volta |
-| Slide / indicador deslizante | 18–20 | 400–500 | — | Rápido, sem oscilação |
-| Desfoco / deselect | 12–14 | 400 | — | Retorno suave |
-| Modal / entrada de tela | 10–14 | 300 | — | Expansão natural |
+Destaques visuais de seleção em grades (ex: dia de calendário, cor, ícone) devem usar **fade de opacidade** — sem escala, sem bounce:
+
+```tsx
+function SelectableCell({ isSelected, ... }) {
+  const selectOpacity = useSharedValue(isSelected ? 1 : 0);
+
+  useEffect(() => {
+    selectOpacity.value = withTiming(isSelected ? 1 : 0, { duration: 180 });
+  }, [isSelected, selectOpacity]);
+
+  const highlightStyle = useAnimatedStyle(() => ({ opacity: selectOpacity.value }));
+
+  return (
+    <View style={cellStyle}>
+      {/* overlay colorido que faz fade in/out */}
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.primaryGold }, highlightStyle]} />
+      <Text>{label}</Text>
+    </View>
+  );
+}
+```
+
+**Tabela de referência rápida (valores das constantes):**
+
+| Constante | damping | stiffness | mass | Efeito |
+|-----------|---------|-----------|------|--------|
+| `SPRING_BOUNCE` | 5 | 550 | 0.35 | Bounce ultrarrápido, fluido |
+| `SPRING_MODAL` | 55 | 700 | — | Entrada de modal rápida, sem oscilação |
 
 ### Entrada de modais e bottom sheets
 
-Modais devem entrar com `scale` + `opacity` combinados:
+Modais devem entrar com `scale` + `opacity` combinados, usando `SPRING_MODAL`:
 
 ```tsx
-const scaleAnim = useSharedValue(0.85);
+const scaleAnim   = useSharedValue(0.85);
 const opacityAnim = useSharedValue(0);
 
 // ao abrir:
-scaleAnim.value = withSpring(1, { damping: 14, stiffness: 300 });
-opacityAnim.value = withTiming(1, { duration: 150 });
+scaleAnim.value   = withSpring(1, SPRING_MODAL);
+opacityAnim.value = withTiming(1, { duration: 180 });
 
 // ao fechar:
-scaleAnim.value = withSpring(0.85, { damping: 14, stiffness: 300 });
-opacityAnim.value = withTiming(0, { duration: 120 });
+scaleAnim.value   = withTiming(0.85, { duration: 150 });
+opacityAnim.value = withTiming(0, { duration: 150 });
+```
+
+### Transições internas (fade)
+
+Transições entre telas dentro de um modal (ex: opções → calendário) e trocas de conteúdo (ex: grade de mês) devem usar **fade puro** — sem translateX, sem spring:
+
+```tsx
+opacity.value = withTiming(0, { duration: 120 }, (finished) => {
+  if (!finished) return;
+  runOnJS(setView)('next');
+  opacity.value = withTiming(1, { duration: 150 });
+});
 ```
 
 ### Transição de telas (stack)
@@ -111,6 +189,7 @@ Todas as `Stack.Screen` devem usar `animation: 'slide_from_right'` (já configur
 ### Proibições
 
 - Nunca usar `Animated` do `react-native` — usar `react-native-reanimated`
+- Nunca passar literais `{ damping: X, stiffness: Y }` diretamente em `withSpring()` — usar as constantes `SPRING_*`
 - Nunca usar `transform: [{ scale: ... }]` estático em `style={{}}` como substituto de animação
 - Nunca usar `LayoutAnimation` do React Native core
 
@@ -283,3 +362,132 @@ import { IconPickerGrid } from 'components/IconPickerGrid';
 ```
 
 > **Label do campo:** O componente renderiza apenas a grid (card com a grade + paginação). O `<Text>` do label "Ícone" fica a cargo da tela consumidora, como nos demais campos do formulário.
+
+---
+
+### `Loading.tsx`
+
+Indicador de carregamento com três animações simultâneas em reanimated.
+
+**Exports:** `Loading` + `LoadingScreen` (wrapper tela cheia).
+
+**Props (`LoadingProps`):**
+- `message?: string` — padrão `'Carregando...'`
+- `size?: 'small' | 'medium' | 'large'` — padrão `'medium'`
+- `showIcon?: boolean` — padrão `true`
+
+**Animações:**
+- Ícone rotaciona continuamente (1500ms, bezier 0.65/0/0.35/1)
+- Container do ícone pulsa escala 1→1.1→1 (2000ms loop)
+- 3 dots piscam em sequência com offset de 200ms (ciclo 1200ms)
+
+```tsx
+import { Loading, LoadingScreen } from 'components/Loading';
+
+// Inline dentro de um container
+<Loading message="Carregando transações..." size="medium" />
+
+// Tela cheia
+<LoadingScreen message="Aguarde..." />
+```
+
+---
+
+### `EscopoEdicaoModal.tsx`
+
+Modal com três opções de escopo de edição para transações de grupo.
+
+**Props:**
+- `visible: boolean`
+- `onClose: () => void`
+- `onSelectEscopo: (escopo: EditScope) => void`
+- `hasGroup: boolean` — desabilita as opções `all_related` e `from_this_forward` quando false
+
+**Opções:**
+| Valor | Label | Disponível |
+|-------|-------|------------|
+| `only_this` | Apenas esta | Sempre |
+| `from_this_forward` | Esta e futuras | Apenas com grupo |
+| `all_related` | Todas do grupo | Apenas com grupo |
+
+**Animação:** `scale 0.85→1` + `opacity 0→1` via `withSpring` / `withTiming`.
+
+---
+
+### `AttachmentPicker.tsx`
+
+Seletor de arquivos (câmera, galeria, PDF) que retorna lista de `AttachmentLocal[]` com base64.
+
+**Props:**
+- `attachments: AttachmentLocal[]`
+- `onAttachmentsChange: (list: AttachmentLocal[]) => void`
+- `maxAttachments?: number` — padrão `5`
+- `onError?: (msg: string) => void`
+- `isReceipt?: boolean` — padrão `false`; marca `isReceipt: true` nos itens
+
+**Regras:**
+- Limite de 10 MB por arquivo
+- Esconde os botões de seleção ao atingir `maxAttachments`
+- Usa `expo-image-picker`, `expo-document-picker`, `expo-file-system`
+
+---
+
+### `AttachmentViewer.tsx`
+
+Modal fullscreen para visualização de imagens ou PDFs já salvos no banco.
+
+**Props:**
+- `attachment: Attachment`
+- `visible: boolean`
+- `onClose: () => void`
+
+**Ações disponíveis:**
+- Imagens: salvar na galeria via `expo-media-library`
+- PDFs: copiar para `documentDirectory` e compartilhar via `expo-sharing`
+- Compartilhar qualquer tipo via `expo-sharing`
+
+---
+
+### `ReceiptModal.tsx`
+
+Bottom sheet para adicionar comprovante ao marcar uma transação como paga.
+
+**Props:**
+- `visible: boolean`
+- `transactionId: string`
+- `onClose: () => void`
+- `onSuccess: () => void`
+- `onSkip: () => void`
+
+**Comportamento:** usa `AttachmentPicker` com `maxAttachments=1, isReceipt=true`. Chama `useAttachments(transactionId).createReceipt()` ao enviar.
+
+---
+
+### `TransacaoDetalhesModal.tsx`
+
+Modal slide-up com detalhes completos de uma transação.
+
+**Props:**
+- `visible: boolean`
+- `transaction: TransactionWithCategory`
+- `onClose: () => void`
+- `onEdit: () => void`
+
+**Seções:** hero (valor, badge de status), informações (data, tipo de pagamento, parcelas), comprovante (se pago), lista de anexos. Usa `AttachmentViewer` para abrir um anexo.
+
+---
+
+### `TransactionItem.tsx`
+
+Item de transação com swipe para marcar pago/pendente.
+
+**Props:**
+- `transaction: TransactionWithCategory`
+- `onPress?: () => void` — se omitido, abre `TransacaoDetalhesModal`
+- `variant?: 'card' | 'simple'` — padrão `'card'`; `simple` remove bordas e padding de card
+- `showTime?: boolean`
+- `onStatusChanged?: () => void` — chamado após toggle de status (ex: refetch da lista)
+
+**Swipe direito:** botão pago/pendente. Ao marcar como pago, abre `ReceiptModal` automaticamente.
+
+**Editar:** botão de lápis → `EscopoEdicaoModal` → navega para `/(stack)/editTransaction` com todos os parâmetros da transação.

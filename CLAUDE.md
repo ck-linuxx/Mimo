@@ -8,7 +8,7 @@
 
 > **Manutenção:** Após implementar qualquer nova funcionalidade em uma pasta nova, crie o `CLAUDE.md` dentro dela documentando o módulo e adicione uma linha na tabela abaixo com o caminho e uma descrição de uma linha.
 
-> **Animações obrigatórias:** Todo componente interativo deve ter animação. Usar `react-native-reanimated` (`withSpring` / `withTiming`) — nunca `Animated` do React Native core. Seleção de itens usa bounce (`damping: 6–8, stiffness: 400, mass: 0.6`); indicadores deslizantes usam spring rápido (`damping: 18–20, stiffness: 400–500`); modais usam scale + opacity combinados. Ver regras completas em [components/CLAUDE.md](components/CLAUDE.md).
+> **Animações obrigatórias:** Todo componente interativo deve ter animação. Usar `react-native-reanimated` (`withSpring` / `withTiming`) — nunca `Animated` do React Native core. Usar sempre as constantes de spring definidas no arquivo (`SPRING_BOUNCE`, `SPRING_SLIDE`, `SPRING_MODAL`) — nunca passar literais `{ damping, stiffness }` diretamente em `withSpring()`. Ver valores, exemplos e proibições em [components/CLAUDE.md](components/CLAUDE.md).
 
 ## Convenção
 

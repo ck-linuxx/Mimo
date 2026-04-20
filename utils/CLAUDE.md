@@ -34,6 +34,26 @@ import { ACCOUNT_TYPE_LABELS, FREQUENCY_OPTIONS, type PaymentType } from 'utils/
 
 ---
 
+---
+
+### `buildFormPatch.ts`
+Utilitário genérico para extrair apenas campos alterados de um TanStack Form, usando `fieldMeta.isDefaultValue`.
+
+**Uso:**
+```ts
+import { buildFormPatch } from 'utils/buildFormPatch';
+
+const fieldMeta = form.store.state.fieldMeta;
+const patch = buildFormPatch(fieldMeta, value);
+// patch conterá apenas os campos onde isDefaultValue === false
+```
+
+**Quando usar:** Ao construir payload PATCH para operações em bulk (ex: edição de grupos de transações), para evitar sobrescrever campos não alterados em todas as linhas do grupo.
+
+**Regra TanStack Form:** Usar `!isDefaultValue` (não `isDirty`) para PATCH — reflete o estado real do valor vs `defaultValues` no momento do submit.
+
+---
+
 ## Arquivos
 
 ### `useCurrencyInput.ts`

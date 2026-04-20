@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { eq } from 'drizzle-orm';
@@ -12,14 +12,20 @@ interface UseCardsResult {
   data: Card[];
   loading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 export function useCards(): UseCardsResult {
   const [data, setData] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     try {
       const result = db
         .select()
@@ -33,7 +39,7 @@ export function useCards(): UseCardsResult {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshKey]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch };
 }

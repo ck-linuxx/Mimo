@@ -78,4 +78,25 @@ Ocorrências individuais de movimentações financeiras.
 
 - **Só esta**: deleta apenas o registro da `transactions`.
 - **Esta e próximas**: deleta registros futuros + seta `transaction_groups.isActive = false`.
+
+---
+
+### `attachments`
+Anexos e comprovantes vinculados a uma transação.
+
+- `transactionId`: FK para `transactions.id` (NOT NULL).
+- `title`: nome amigável exibido na UI (ex: "Recibo da farmácia").
+- `originalName`: nome original do arquivo (ex: "foto.jpg").
+- `fileType`: MIME type (ex: `'image/jpeg'`, `'application/pdf'`).
+- `fileSize`: tamanho em bytes (integer).
+- `data`: conteúdo do arquivo em base64 TEXT (sem prefixo `data:...;base64,`).
+- `isReceipt`: boolean (0/1). Quando `true`, é o comprovante de pagamento.
+- `createdAt`: timestamp ms.
+
+**Limites de negócio (aplicados nos hooks):**
+- Máximo **5 anexos** por transação (incluindo comprovante).
+- Máximo **1 comprovante** (`isReceipt=true`) por transação.
+- Tamanho máximo por arquivo: **10 MB** (validado no `AttachmentPicker`).
+
+**Geração de migration:** `bunx drizzle-kit generate` (atualize `drizzle/migrations.js` via drizzle-kit — ocorre automaticamente).
 - **Todas**: deleta todos os registros do grupo + o registro do `transaction_groups`.

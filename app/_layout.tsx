@@ -1,11 +1,15 @@
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import migrations from 'drizzle/migrations';
+import { seedDefaultCategories } from 'utils/seedCategories';
+import { Loading } from 'components/Loading';
 import '../global.css';
 
 const expo = SQLite.openDatabaseSync('db.db');
@@ -13,6 +17,12 @@ export const db = drizzle(expo);
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
+  const [dbReady, setDbReady] = useState(false);
+
+  useEffect(() => {
+    if (!success) return;
+    seedDefaultCategories(db).then(() => setDbReady(true));
+  }, [success]);
 
   if (error) {
     return (
@@ -24,20 +34,22 @@ export default function RootLayout() {
     );
   }
 
-  if (!success) {
+  if (!dbReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0D0D0D' }}>
-        <ActivityIndicator size="large" color="#D4AF37" />
+        <Loading size="large" message="Iniciando..." />
       </View>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(stack)" options={{ headerShown: false }} />
-      </Stack>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(stack)" options={{ headerShown: false }} />
+        </Stack>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

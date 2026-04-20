@@ -6,7 +6,7 @@ import { generateId } from 'utils/generateId';
 export const categoryTypes = ['income', 'expense', 'both'] as const;
 export type CategoryType = (typeof categoryTypes)[number];
 
-export const accountTypes = ['checking', 'savings', 'cash', 'investment'] as const;
+export const accountTypes = ['checking', 'savings', 'investment'] as const;
 export type AccountType = (typeof accountTypes)[number];
 
 export const transactionTypes = ['income', 'expense'] as const;
@@ -132,6 +132,21 @@ export type NewTransactionGroup = typeof transactionGroups.$inferInsert;
 
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
+
+export const attachments = sqliteTable('attachments', {
+  id: text('id').primaryKey().$defaultFn(generateId),
+  transactionId: text('transaction_id').notNull().references(() => transactions.id),
+  title: text('title').notNull(),
+  originalName: text('original_name').notNull(),
+  fileType: text('file_type').notNull(),
+  fileSize: integer('file_size').notNull(),
+  data: text('data').notNull(),
+  isReceipt: integer('is_receipt', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+});
+
+export type Attachment = typeof attachments.$inferSelect;
+export type NewAttachment = typeof attachments.$inferInsert;
 
 export const settings = sqliteTable('settings', {
   id: integer('id').primaryKey(),

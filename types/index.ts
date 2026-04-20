@@ -7,7 +7,7 @@ export type { Account, NewAccount } from './account';
 export type { Card, NewCard } from './card';
 
 export { TransactionTypeEnum, TransactionStatusEnum } from './transaction';
-export type { Transaction, NewTransaction } from './transaction';
+export type { Transaction, NewTransaction, EditScope } from './transaction';
 
 export { GroupTypeEnum, FrequencyEnum } from './transactionGroup';
 export type { TransactionGroup, NewTransactionGroup } from './transactionGroup';
@@ -17,3 +17,6 @@ export type { FinancialGoal, NewFinancialGoal } from './financialGoal';
 
 export { ThemeEnum } from './settings';
 export type { Settings } from './settings';
+
+export type { Attachment, NewAttachment, AttachmentLocal } from './attachment';
+export type { TransactionWithCategory } from './transactionView';
