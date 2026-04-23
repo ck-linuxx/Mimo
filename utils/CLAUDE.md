@@ -48,6 +48,22 @@ const patch = buildFormPatch(fieldMeta, value);
 // patch conterá apenas os campos onde isDefaultValue === false
 ```
 
+---
+
+### `formatCurrency.ts`
+Função pura para formatar valores monetários em Real brasileiro (BRL).
+
+**Exportações:**
+- `formatCurrency(value: number): string` — formata `value` como `R$ X.XXX,XX` usando `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })`.
+
+**Uso:**
+```ts
+import { formatCurrency } from 'utils/formatCurrency';
+formatCurrency(1234.5); // → 'R$ 1.234,50'
+```
+
+> **Regra:** nunca duplicar essa função em outros arquivos. Esta é a fonte única de verdade para formatação de moeda no projeto.
+
 **Quando usar:** Ao construir payload PATCH para operações em bulk (ex: edição de grupos de transações), para evitar sobrescrever campos não alterados em todas as linhas do grupo.
 
 **Regra TanStack Form:** Usar `!isDefaultValue` (não `isDirty`) para PATCH — reflete o estado real do valor vs `defaultValues` no momento do submit.

@@ -17,6 +17,7 @@ import { useAttachments } from 'hooks/useAttachments';
 import { useGroupPaidCount } from 'hooks/transactions/useGroupPaidCount';
 import { useGroupAttachments } from 'hooks/attachments/useGroupAttachments';
 import type { TransactionWithCategory, Attachment } from 'types';
+import { formatCurrency } from 'utils/formatCurrency';
 
 interface TransactionDetailsModalProps {
   visible: boolean;
@@ -79,10 +80,6 @@ function formatFullDate(timestamp: number): string {
   const d = new Date(timestamp);
   const weekdays = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
   return `${weekdays[d.getDay()]}, ${d.getDate()} de ${MONTH_NAMES[d.getMonth()]} de ${d.getFullYear()}`;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
 export function TransactionDetailsModal({

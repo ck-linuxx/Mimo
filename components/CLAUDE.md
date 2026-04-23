@@ -198,7 +198,183 @@ Todas as `Stack.Screen` devem usar `animation: 'slide_from_right'` (já configur
 ## Regras de Código
 
 - **Sem emojis** — usar exclusivamente ícones `Feather` de `@expo/vector-icons`
+
+---
+
+## Componentes utilitários
+
+### `Skeleton`
+
+Componente de placeholder animado para estados de carregamento. Substitui blocos inteiros de conteúdo durante loading — nunca apenas o campo de texto isolado.
+
+**Importação:**
+```tsx
+import { Skeleton } from 'components/Skeleton';
+```
+
+**Props:**
+
+| Prop | Tipo | Padrão | Descrição |
+|------|------|--------|----------|
+| `width` | `number \| string` | `'100%'` | Largura do bloco |
+| `height` | `number` | `16` | Altura do bloco |
+| `borderRadius` | `number` | `8` | Arredondamento |
+| `rows` | `SkeletonRowConfig[]` | — | Quando fornecido, renderiza múltiplas linhas |
+| `gap` | `number` | `8` | Espaçamento entre linhas no modo `rows` |
+| `style` | `ViewStyle` | — | Estilo adicional no container |
+
+**Exemplos:**
+
+```tsx
+// Card full-width — Skeleton substitui o InfoCard inteiro
+{loadingBalance ? (
+  <Skeleton height={80} borderRadius={16} style={{ marginBottom: 16 }} />
+) : (
+  <InfoCard className="mb-4">
+    {/* conteúdo real */}
+  </InfoCard>
+)}
+
+// Dois cards lado a lado — Skeleton com flex: 1 mantendo o layout de colunas
+<View className="flex-row gap-3 mb-4">
+  {loadingMonthly ? (
+    <Skeleton height={88} borderRadius={16} style={{ flex: 1 }} />
+  ) : (
+    <InfoCard columns={2}>{/* conteúdo real */}</InfoCard>
+  )}
+  {loadingMonthly ? (
+    <Skeleton height={88} borderRadius={16} style={{ flex: 1 }} />
+  ) : (
+    <InfoCard columns={2}>{/* conteúdo real */}</InfoCard>
+  )}
+</View>
+```
+
+**Regra de uso:** o `Skeleton` **substitui o componente container inteiro** (ex: `InfoCard`) durante o loading — nunca renderize o container vazio com skeleton interno. Use `borderRadius={16}` para cards (equivalente a `rounded-2xl`). Para cards com `flex: 1`, passe `style={{ flex: 1 }}` no Skeleton para manter o layout de colunas.
+
+**Animação:** pulso de opacidade (`1.0 → 0.3 → 1.0`) com `withRepeat(withTiming(...))` — 750 ms por ciclo. Background usa `colors.disabled` (responde ao tema dark/light automaticamente).
+
+---
+
+### `InfoCard`
+
+Container de card genérico com suporte a layout de colunas.
+
+**Importação:**
+```tsx
+import { InfoCard } from 'components/InfoCard';
+```
+
+**Props:**
+
+| Prop | Tipo | Descrição |
+|------|------|-----------|
+| `columns` | `number` | Quando fornecido, aplica `flex: 1` — use dentro de `View className="flex-row"` |
+| `className` | `string` | Classes adicionais |
+| `style` | `ViewStyle` | Estilos adicionais |
+| `children` | `ReactNode` | Conteúdo do card |
+
+**Exemplo:**
+```tsx
+// Card full-width
+<InfoCard className="mb-4">
+  <Text>Conteúdo</Text>
+</InfoCard>
+
+// Dois cards lado a lado
+<View className="flex-row gap-3">
+  <InfoCard columns={2}><Text>Receitas</Text></InfoCard>
+  <InfoCard columns={2}><Text>Despesas</Text></InfoCard>
+</View>
+```
+
+---
+
+### `PaginatedList<T>`
+
+Lista paginada genérica com seletor de linhas por página e controles de navegação.
+
+**Importação:**
+```tsx
+import { PaginatedList } from 'components/PaginatedList';
+```
+
+**Props principais:**
+
+| Prop | Tipo | Padrão | Descrição |
+|------|------|--------|----------|
+| `data` | `T[]` | — | Dados da página atual |
+| `totalCount` | `number` | — | Total de registros (para calcular páginas) |
+| `page` | `number` | — | Página atual (0-indexed) |
+| `pageSize` | `number` | — | Tamanho da página |
+| `onPageChange` | `(page: number) => void` | — | Callback de mudança de página |
+| `onPageSizeChange` | `(size: number) => void` | — | Callback de mudança de tamanho |
+| `renderItem` | `(item: T, index: number) => ReactNode` | — | Renderizador de item |
+| `enableRowsCount` | `boolean` | `true` | Exibe dropdown de linhas por página |
+| `enablePagination` | `boolean` | `true` | Exibe controles de paginação |
+| `pageSizeOptions` | `number[]` | `[3, 5, 10]` | Opções do dropdown |
+| `estimatedItemHeight` | `number` | `77` | Altura estimada por item (para minHeight) |
+| `emptyIcon` | `string` | — | Ícone Feather para estado vazio |
+| `emptyText` | `string` | — | Texto principal do estado vazio |
+| `emptySubtext` | `string` | — | Subtexto do estado vazio |
+| `ListHeaderComponent` | `ReactNode` | — | Header renderizado dentro do card |
+
+**Regras visuais:**
+- Items usam `variant="flat"` de `TransactionItem` — o card de `PaginatedList` gerencia separadores e cantos arredondados.
+- Dropdown de linhas abre **para cima** (`bottom: 44`, `zIndex: 300`, `elevation: 12`).
+- Indicador de página: template string `\`${currentDisplay} – ${totalPages}\`` — nunca `<Text>` aninhado.
 - **Sem `any`** no TypeScript — todas as props e retornos devem ser explicitamente tipados
+
+---
+
+### `InfoCard.tsx`
+Card container genérico com suporte a layout de colunas flexível.
+
+**Props:**
+- `children: ReactNode` — conteúdo livre
+- `columns?: number` — sem valor = full width; com valor = `flex: 1` (divide espaço igualmente com siblings no mesmo row)
+- `style?: StyleProp<ViewStyle>` — estilo extra opcional
+- `className?: string` — classes NativeWind extras (não sobrescrevem bg/radius padrão)
+
+**Regra de theming:** usa apenas NativeWind tokens. Nunca hex hardcoded.
+
+```tsx
+// Card de largura total
+<InfoCard>...</InfoCard>
+
+// Dois cards em row 50/50
+<View className="flex-row gap-3">
+  <InfoCard columns={2}>...</InfoCard>
+  <InfoCard columns={2}>...</InfoCard>
+</View>
+```
+
+---
+
+### `PaginatedList.tsx`
+Lista paginada genérica com seletor de linhas por página e controles de navegação.
+
+**Genérico:** `PaginatedList<T>` — aceita qualquer tipo via generics.
+
+**Props principais:**
+- `data: T[]` — itens da página atual (já paginados via Drizzle limit/offset)
+- `totalCount: number` — total de itens para cálculo de páginas
+- `page: number` — página atual 0-based (controlado pelo parent)
+- `pageSize: number` — linhas por página (controlado pelo parent)
+- `onPageChange: (page: number) => void`
+- `onPageSizeChange: (size: number) => void`
+- `renderItem: (item: T, index: number) => ReactNode`
+- `enableRowsCount?: boolean` — exibe seletor de qtd. linhas (default: `true`)
+- `enablePagination?: boolean` — exibe controles prev/next + indicador (default: `true`)
+- `pageSizeOptions?: number[]` — opções do seletor (default: `[3, 5, 10]`)
+- `emptyIcon?`, `emptyText?`, `emptySubtext?` — empty state configurável
+- `ListHeaderComponent?: ReactNode` — header acima da lista
+
+**Indicador de página:** formato `1 – 10` (página atual – total de páginas)
+
+**Componente controlled:** o parent gerencia `page` e `pageSize` como state, e os passa ao hook de query com `limit = pageSize` e `offset = page * pageSize`.
+
+**Regra de paginação Drizzle:** ver https://orm.drizzle.team/docs/guides/limit-offset-pagination
 - **`memo()`** somente quando houver evidência mensurável de re-render desnecessário (ex: lista com muitos itens)
 - **`useCallback`** para handlers passados como props a componentes filhos
 - **`useMemo`** para computações caras que dependem de props/estado (ex: listas filtradas, cálculos de calendário)

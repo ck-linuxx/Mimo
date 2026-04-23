@@ -11,17 +11,20 @@ import { EditScopeModal } from 'components/EditScopeModal';
 import { TransactionDetailsModal } from 'components/TransactionDetailsModal';
 import { ReceiptModal } from 'components/ReceiptModal';
 import type { TransactionWithCategory, EditScope } from 'types';
+import { formatCurrency } from 'utils/formatCurrency';
 
 interface TransactionItemProps {
   transaction: TransactionWithCategory;
   onPress?: () => void;
-  variant?: 'card' | 'simple';
+  /**
+   * - `card`: card com borderRadius, marginBottom e fundo próprio (uso isolado)
+   * - `simple`: fundo plano com borderBottom (uso em lista com separador)
+   * - `flat`: fundo plano sem bordas, sem marginBottom — para uso dentro de
+   *           PaginatedList onde o container cuida dos separadores
+   */
+  variant?: 'card' | 'simple' | 'flat';
   showTime?: boolean;
   onStatusChanged?: () => void;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
 export function TransactionItem({
@@ -151,6 +154,15 @@ export function TransactionItem({
                   justifyContent: 'space-between',
                   marginBottom: 12,
                 }
+              : variant === 'flat'
+              ? {
+                  backgroundColor: colors.cardBackground,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                }
               : {
                   backgroundColor: colors.cardBackground,
                   flexDirection: 'row',
@@ -212,7 +224,7 @@ export function TransactionItem({
                 style={{ color: colors.textSecondary, fontSize: 13, marginTop: 2 }}
                 numberOfLines={1}>
                 {transaction.category?.name ?? 'Sem categoria'}
-                {variant === 'card' &&
+                {(variant === 'card' || variant === 'flat') &&
                   ` · ${new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`}
               </Text>
             </View>

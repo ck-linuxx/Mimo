@@ -26,6 +26,7 @@ Toda pasta de funcionalidade **deve** conter um `CLAUDE.md` próprio descrevendo
 | `db/` | [db/CLAUDE.md](db/CLAUDE.md) | Schema financeiro — Drizzle ORM + SQLite local (contas, cartões, transações, metas) |
 | `themes/` | [themes/CLAUDE.md](themes/CLAUDE.md) | Paleta de cores dark/light + hook `useTheme` com persistência via SQLite (tabela `settings`) |
 | `types/` | [types/index.ts](types/index.ts) | Enums TypeScript e re-exportação dos tipos inferidos do Drizzle — um arquivo por tabela |
-| `utils/` | [utils/CLAUDE.md](utils/CLAUDE.md) | Hooks utilitários reutilizáveis (`useCurrencyInput`) |
+| `utils/` | [utils/CLAUDE.md](utils/CLAUDE.md) | Funções utilitárias puras (`formatCurrency`, `useCurrencyInput`, labels, frequências) |
 | `hooks/` | [hooks/CLAUDE.md](hooks/CLAUDE.md) | Hooks de query SQLite dedicados por entidade + `useCustomAlert` |
 | `components/` | [components/CLAUDE.md](components/CLAUDE.md) | Componentes React Native com regras de theming via `themes/colors.ts` |
+| `components/charts/` | [components/charts/CLAUDE.md](components/charts/CLAUDE.md) | Gráficos interativos via @wuba/react-native-echarts + react-native-svg (DonutChart) |

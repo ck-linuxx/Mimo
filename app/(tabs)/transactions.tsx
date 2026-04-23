@@ -10,6 +10,7 @@ import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 import type { TransactionWithCategory } from 'types';
+import { formatCurrency } from 'utils/formatCurrency';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -17,10 +18,6 @@ const MONTH_NAMES = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
 ];
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
 
 interface DayGroup {
   date: string;
