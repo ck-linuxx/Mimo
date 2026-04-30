@@ -17,6 +17,7 @@ import { SmoothLineChart } from 'components/charts/SmoothLineChart';
 import { useCards } from 'hooks/useCards';
 import { useTransactions } from 'hooks/useTransactions';
 import { useAccountBalance } from 'hooks/useAccountBalance';
+import { useAccountTransactionsPaginated } from 'hooks/transactions/useAccountTransactionsPaginated';
 import { formatCurrency } from 'utils/formatCurrency';
 import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
@@ -103,6 +104,10 @@ export default function AccountDetailScreen() {
   );
 
   const linkedCardIds = useMemo(() => linkedCards.map((c) => c.id), [linkedCards]);
+
+  // Lista paginada via DB — sem slice em memória
+  const { data: txPage, totalCount: txPageTotal, loading: txPageLoading, refetch: refetchTxPage } =
+    useAccountTransactionsPaginated(id ?? null, linkedCardIds, year, month, page, pageSize);
 
   // Saldo no início do mês selecionado:
   // saldo inicial da conta + impacto de todas as transações pagas ANTES do mês.
@@ -240,17 +245,15 @@ export default function AccountDetailScreen() {
     };
   }, [accountTxs, year, month, colors.incomeColor, colors.primaryGold]);
 
-  // ─── Dados paginados para a lista ─────────────────────────────────────────
-
-  const paginatedTxs = useMemo(
-    () => accountTxs.slice(page * pageSize, (page + 1) * pageSize),
-    [accountTxs, page, pageSize],
-  );
-
   // ─── Helpers visuais ──────────────────────────────────────────────────────
 
   const accentColor = account?.color ?? colors.primaryGold;
   const isLoadingInitial = loadingAccount || cardsLoading;
+
+  const handleTxChanged = useCallback(() => {
+    refetchTx();
+    refetchTxPage();
+  }, [refetchTx, refetchTxPage]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -495,8 +498,8 @@ export default function AccountDetailScreen() {
           {/* ── Transações do mês ─────────────────────────────────────── */}
           <View className="px-5">
             <PaginatedList
-              data={paginatedTxs}
-              totalCount={accountTxs.length}
+              data={txPage}
+              totalCount={txPageTotal}
               page={page}
               pageSize={pageSize}
               onPageChange={setPage}
@@ -505,7 +508,7 @@ export default function AccountDetailScreen() {
                 setPage(0);
               }}
               pageSizeOptions={[5, 10, 20]}
-              isLoading={txLoading}
+              isLoading={txPageLoading}
               emptyIcon="inbox"
               emptyText="Nenhuma transação neste período"
               estimatedItemHeight={77}
@@ -514,7 +517,7 @@ export default function AccountDetailScreen() {
                   key={tx.id}
                   transaction={tx}
                   variant="flat"
-                  onStatusChanged={refetchTx}
+                  onStatusChanged={handleTxChanged}
                 />
               )}
               ListHeaderComponent={

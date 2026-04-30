@@ -374,7 +374,10 @@ Lista paginada genérica com seletor de linhas por página e controles de navega
 
 **Componente controlled:** o parent gerencia `page` e `pageSize` como state, e os passa ao hook de query com `limit = pageSize` e `offset = page * pageSize`.
 
-**Regra de paginação Drizzle:** ver https://orm.drizzle.team/docs/guides/limit-offset-pagination
+**Regra de paginação — obrigatório DB-level:**
+- `data` deve ser a página já paginada pelo hook via `limit/offset` no Drizzle — **nunca** resultado de `.slice()` no componente ou na tela.
+- `totalCount` deve vir do `COUNT(*)` do hook, **nunca** de `.length` de um array completo em memória.
+- Qualquer tela com `page`/`pageSize` como state deve ter um hook correspondente com `limit`/`offset` e query separada de contagem.
 - **`memo()`** somente quando houver evidência mensurável de re-render desnecessário (ex: lista com muitos itens)
 - **`useCallback`** para handlers passados como props a componentes filhos
 - **`useMemo`** para computações caras que dependem de props/estado (ex: listas filtradas, cálculos de calendário)

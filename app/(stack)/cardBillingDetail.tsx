@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -39,17 +39,11 @@ export default function CardBillingDetailScreen() {
   const { data: summary, loading: summaryLoading, refetch: refetchSummary } =
     useCardBillingSummary(cardId, cycleStartTs, cycleEndTs);
 
-  const { data: txList, loading: txLoading, refetch: refetchTx } =
-    useCardBillingTransactions(cardId, cycleStartTs, cycleEndTs);
-
-  // Paginação em memória: a lista de fatura tende a ser pequena (1 ciclo ~30 dias)
   const [page, setPage]         = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
-  const paginatedTxs = useMemo(
-    () => txList.slice(page * pageSize, (page + 1) * pageSize),
-    [txList, page, pageSize],
-  );
+  const { data: txList, totalCount: txTotal, loading: txLoading, refetch: refetchTx } =
+    useCardBillingTransactions(cardId, cycleStartTs, cycleEndTs, page, pageSize);
 
   const totalSpent        = summary.totalSpent;
   const availableLimit    = limit != null ? Math.max(0, limit - totalSpent) : null;
@@ -170,8 +164,8 @@ export default function CardBillingDetailScreen() {
             Transações
           </Text>
           <PaginatedList
-            data={paginatedTxs}
-            totalCount={txList.length}
+            data={txList}
+            totalCount={txTotal}
             page={page}
             pageSize={pageSize}
             onPageChange={setPage}

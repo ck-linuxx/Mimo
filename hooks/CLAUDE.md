@@ -47,7 +47,69 @@ Todos os hooks de consulta ao banco retornam:
 { data: T[], loading: boolean, error: string | null }
 ```
 
+Hooks paginados retornam também `totalCount: number`:
+```ts
+{ data: T[], totalCount: number, loading: boolean, error: string | null, refetch: () => void }
+```
+
 O estado inicial é `loading: true`, `data: []`, `error: null`. Após a consulta síncrona, `loading` passa para `false`.
+
+---
+
+## Regra de Paginação — obrigatório DB-level
+
+**Proibido** realizar paginação em memória no front (`.slice(page * pageSize, ...)`).
+
+Toda lista de dados transacionais que exibir paginação **deve** usar `limit/offset` no Drizzle:
+
+```ts
+// ✅ Correto — paginação real no banco
+const rows = db
+  .select()
+  .from(transactions)
+  .where(baseWhere)
+  .orderBy(desc(transactions.date))
+  .limit(pageSize)
+  .offset(page * pageSize)
+  .all();
+
+// ❌ Proibido — paginação em memória
+const all = db.select().from(transactions).where(baseWhere).all();
+const page = all.slice(page * pageSize, (page + 1) * pageSize); // NUNCA
+```
+
+### Query de `totalCount`
+
+Deve executar **somente** `COUNT(*)` com a mesma cláusula `where` — sem `JOIN`, sem `ORDER BY`, sem seleção de campos adicionais:
+
+```ts
+// ✅ Correto
+const countRow = db
+  .select({ count: sql<number>`COUNT(*)` })
+  .from(transactions)
+  .where(baseWhere)
+  .get();
+setTotalCount(countRow?.count ?? 0);
+
+// ❌ Proibido — joins desnecessários na contagem
+const countRow = db
+  .select({ count: sql<number>`COUNT(*)` })
+  .from(transactions)
+  .leftJoin(categories, eq(transactions.categoryId, categories.id)) // nunca
+  .where(baseWhere)
+  .get();
+```
+
+### Dependências de array no `useEffect`
+
+Quando o hook recebe um array como parâmetro (ex: `linkedCardIds: string[]`), serializar para string na dependência para evitar re-execuções desnecessárias por mudança de referência:
+
+```ts
+const idsKey = linkedCardIds.join(',');
+useEffect(() => {
+  // usa linkedCardIds normalmente no corpo
+}, [idsKey, ...outrasDeps]);
+```
 
 ## Padrão de Conexão
 
@@ -97,14 +159,30 @@ Resumo financeiro de um ciclo de fatura específico.
 ---
 
 ### `useCardBillingTransactions.ts`
-Listagem completa de transações de um ciclo de fatura.
+Listagem paginada de transações de um ciclo de fatura.
 
-**Assinatura:** `useCardBillingTransactions(cardId, cycleStartTs?, cycleEndTs?)`
+**Assinatura:** `useCardBillingTransactions(cardId, cycleStartTs?, cycleEndTs?, page, pageSize)`
 
-**Retorno:** `{ data: TransactionWithCategory[], loading, error, refetch }`
+**Retorno:** `{ data: TransactionWithCategory[], totalCount: number, loading, error, refetch }`
 
+- Paginação real via `limit/offset` Drizzle
+- COUNT separado sem JOIN para `totalCount`
 - LEFT JOIN em `categories` e `transactionGroups`
 - Exclui `status=cancelled`, ordena por `date DESC`
+
+---
+
+### `useAccountTransactionsPaginated.ts`
+Listagem paginada de transações de uma conta + cartões vinculados para um mês.
+
+**Assinatura:** `useAccountTransactionsPaginated(accountId, linkedCardIds, year, month, page, pageSize)`
+
+**Retorno:** `{ data: TransactionWithCategory[], totalCount: number, loading, error, refetch }`
+
+- Filtro: `accountId = id OR cardId IN (linkedCardIds)` — lida com array vazio
+- COUNT separado sem JOIN para `totalCount`
+- Exclui `status=cancelled`, filtra pelo mês (timestamp), ordena por `date DESC`
+- `linkedCardIds` serializado como `join(',')` na dependência do `useEffect`
 
 ---
 
