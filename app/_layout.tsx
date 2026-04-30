@@ -10,10 +10,25 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import migrations from 'drizzle/migrations';
 import { seedDefaultCategories } from 'utils/seedCategories';
 import { Loading } from 'components/Loading';
+import { ThemeProvider, darkColors, lightColors, useTheme } from 'themes';
 import '../global.css';
 
 const expo = SQLite.openDatabaseSync('db.db');
 export const db = drizzle(expo);
+
+function AppNavigator() {
+  const { theme } = useTheme();
+  const colors = theme === 'dark' ? darkColors : lightColors;
+  return (
+    <Stack
+      screenOptions={{
+        contentStyle: { backgroundColor: colors.background },
+      }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(stack)" options={{ headerShown: false }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
@@ -45,10 +60,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(stack)" options={{ headerShown: false }} />
-        </Stack>
+        <ThemeProvider>
+          <AppNavigator />
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

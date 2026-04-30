@@ -77,6 +77,29 @@ return (
 | Componente | Arquivo | Descrição |
 |------------|---------|-----------|
 | `DonutChart` | `DonutChart.tsx` | Gráfico de rosca (donut) para distribuição proporcional de categorias |
+| `SmoothLineChart` | `SmoothLineChart.tsx` | Gráfico de linhas suaves com múltiplas séries (1-N) e legenda obrigatória |
+| `BarChart` | `BarChart.tsx` | Gráfico de barras agrupadas (gastos mensais) com tick-align e paleta interna |
+
+### `BarChart` — Detalhes de uso
+
+**Props:**
+```ts
+interface BarChartProps {
+  series: BarChartSeries[];   // [{ name, data: number[], color? }]
+  xAxisLabels: string[];       // ex: ['Jan', 'Fev', ...]
+  height?: number;             // default 260
+  isLoading?: boolean;
+  emptyText?: string;
+}
+```
+
+**Convenções:**
+- Registra módulos no nível do módulo: `echarts.use([SVGRenderer, EBarChart, GridComponent, TooltipComponent])`
+- Usa `chartInstanceRef` para evitar dispose em mudança de tema (padrão DonutChart)
+- `barMaxWidth: 28`, `borderRadius: [4,4,0,0]`, `axisTick: { alignWithLabel: true }`
+- Paleta interna `SERIES_PALETTE` usada como fallback quando `color` não é informado
+- Tooltip formata valores com `formatCurrency`
+- Empty state: ícone Feather `bar-chart-2` + emptyText
 
 ### `DonutChart` — Props
 
@@ -93,3 +116,22 @@ return (
 ### Geração de cores dinâmica
 
 Quando `item.color` é `null` ou `undefined`, o componente atribui automaticamente uma cor da paleta `GENERATED_COLORS` (10 cores distintas predefinidas). Esta paleta está definida em `DonutChart.tsx` e pode ser estendida se necessário.
+
+---
+
+### `SmoothLineChart` — Props
+
+| Prop | Tipo | Default | Descrição |
+|------|------|---------|-----------|
+| `series` | `SmoothLineChartSeries[]` | — | Array de séries `{ name, data, color? }` — suporta 1 a N séries |
+| `xAxisLabels` | `string[]` | — | Labels do eixo X (ex: `['1','2',...,'31']`) |
+| `height` | `number` | `240` | Altura em dp |
+| `isLoading` | `boolean` | `false` | Exibe skeleton enquanto true |
+| `emptyText` | `string` | `'Nenhum dado disponível'` | Texto do empty state |
+
+**Regras do `SmoothLineChart`:**
+- A legenda é **sempre exibida** — obrigatória conforme design do app.
+- `series[].color` é opcional; cores são atribuídas automaticamente da paleta `SERIES_PALETTE` quando omitidas.
+- Linhas são smooth (bezier) com área preenchida semi-transparente abaixo.
+- Tooltip mostra todos os valores formatados com `formatCurrency` ao tocar um ponto do eixo X.
+- Registrar `LineChart` junto com os demais módulos ECharts no nível do arquivo (fora do componente).

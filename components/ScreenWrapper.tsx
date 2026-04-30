@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { darkColors, lightColors, useTheme } from 'themes';
 import type { StyleProp, ViewStyle } from 'react-native';
 
 /**
@@ -25,9 +26,11 @@ interface ScreenWrapperProps {
  */
 export function ScreenWrapper({ children, style }: ScreenWrapperProps) {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const colors = theme === 'dark' ? darkColors : lightColors;
 
   return (
-    <View style={[{ flex: 1, paddingTop: insets.top }, style]}>
+    <View style={[{ flex: 1, paddingTop: insets.top, backgroundColor: colors.background }, style]}>
       {children}
     </View>
   );

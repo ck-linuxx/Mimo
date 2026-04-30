@@ -12,10 +12,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { eq } from 'drizzle-orm';
+import { eq, and, ne } from 'drizzle-orm';
 import { accounts } from 'db/schema';
 import { consumeSelectionCallback } from 'utils/selectionStore';
 import { generateId } from 'utils/generateId';
@@ -114,6 +114,9 @@ export default function AccountCreateScreen() {
   const router = useRouter();
   const { alertConfig, visible, hideAlert, showSuccess, showError } = useCustomAlert();
 
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const isEditing = !!id;
+
   const [name, setName] = useState('');
   const [selectedType, setSelectedType] = useState<AccountTypeEnum>(AccountTypeEnum.Checking);
   const [selectedColor, setSelectedColor] = useState<string>(PRESET_COLORS[9]); // azul
@@ -121,6 +124,21 @@ export default function AccountCreateScreen() {
   const [balanceDisplay, setBalanceDisplay] = useState('');
   const [initialBalance, setInitialBalance] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    const item = db.select().from(accounts).where(eq(accounts.id, id)).get();
+    if (item) {
+      setName(item.name);
+      setSelectedType(item.type);
+      setSelectedColor(item.color ?? PRESET_COLORS[9]);
+      setSelectedIcon(item.icon ?? 'briefcase');
+      setBalanceDisplay(
+        item.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      );
+      setInitialBalance(item.balance);
+    }
+  }, [id]);
 
   const handleTypeChange = useCallback((type: AccountTypeEnum) => {
     setSelectedType(type);
@@ -151,7 +169,11 @@ export default function AccountCreateScreen() {
     const existing = db
       .select({ id: accounts.id })
       .from(accounts)
-      .where(eq(accounts.name, trimmedName))
+      .where(
+        isEditing
+          ? and(eq(accounts.name, trimmedName), ne(accounts.id, id!))
+          : eq(accounts.name, trimmedName),
+      )
       .get();
 
     if (existing) {
@@ -164,45 +186,60 @@ export default function AccountCreateScreen() {
 
     setIsSubmitting(true);
     try {
-      const now = Date.now();
-      const id = generateId();
+      if (isEditing) {
+        db.update(accounts)
+          .set({
+            name: trimmedName,
+            type: selectedType,
+            color: selectedColor,
+            icon: selectedIcon,
+            updatedAt: Date.now(),
+          })
+          .where(eq(accounts.id, id!))
+          .run();
+        showSuccess('Conta atualizada!');
+        router.back();
+      } else {
+        const now = Date.now();
+        const newId = generateId();
 
-      await db.insert(accounts).values({
-        id,
-        name: trimmedName,
-        type: selectedType,
-        balance: initialBalance,
-        color: selectedColor,
-        icon: selectedIcon,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
+        await db.insert(accounts).values({
+          id: newId,
+          name: trimmedName,
+          type: selectedType,
+          balance: initialBalance,
+          color: selectedColor,
+          icon: selectedIcon,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        });
 
-      const newAccount: Account = {
-        id,
-        name: trimmedName,
-        type: selectedType,
-        balance: initialBalance,
-        color: selectedColor,
-        icon: selectedIcon,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      };
+        const newAccount: Account = {
+          id: newId,
+          name: trimmedName,
+          type: selectedType,
+          balance: initialBalance,
+          color: selectedColor,
+          icon: selectedIcon,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        };
 
-      const cb = consumeSelectionCallback<{ type: 'account'; item: Account }>('paymentMethod');
-      cb?.({ type: 'account', item: newAccount });
+        const cb = consumeSelectionCallback<{ type: 'account'; item: Account }>('paymentMethod');
+        cb?.({ type: 'account', item: newAccount });
 
-      showSuccess('Conta criada!');
-      router.dismiss(2);
+        showSuccess('Conta criada!');
+        router.dismiss(2);
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Erro inesperado';
-      showError('Erro ao criar conta', message);
+      showError(isEditing ? 'Erro ao atualizar conta' : 'Erro ao criar conta', message);
     } finally {
       setIsSubmitting(false);
     }
-  }, [name, selectedType, selectedColor, selectedIcon, initialBalance, router, showSuccess, showError]);
+  }, [id, isEditing, name, selectedType, selectedColor, selectedIcon, initialBalance, router, showSuccess, showError]);
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.background }}>
@@ -210,7 +247,7 @@ export default function AccountCreateScreen() {
       <View className="flex-row items-center justify-between px-6 pb-4 pt-2">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />
         <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
-          Nova Conta
+          {isEditing ? 'Editar Conta' : 'Nova Conta'}
         </Text>
         <View className="h-10 w-10" />
       </View>
@@ -304,12 +341,13 @@ export default function AccountCreateScreen() {
             </Text>
             <TextInput
               className="flex-1 text-base"
-              style={{ color: colors.textPrimary }}
+              style={{ color: isEditing ? colors.textSecondary : colors.textPrimary }}
               placeholder="0,00"
               placeholderTextColor={colors.textSecondary}
               value={balanceDisplay}
               onChangeText={handleBalanceChange}
               keyboardType="numeric"
+              editable={!isEditing}
             />
           </View>
         </View>
@@ -340,8 +378,8 @@ export default function AccountCreateScreen() {
         </View>
 
         <AppButton
-          label="Criar Conta"
-          loadingLabel="Criando..."
+          label={isEditing ? 'Salvar Alterações' : 'Criar Conta'}
+          loadingLabel={isEditing ? 'Salvando...' : 'Criando...'}
           loading={isSubmitting}
           onPress={handleCreate}
         />

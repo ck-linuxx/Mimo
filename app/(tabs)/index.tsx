@@ -13,6 +13,7 @@ import { TransactionItem } from 'components/TransactionItem';
 import { useTotalBalance } from 'hooks/useTotalBalance';
 import { useTransactions } from 'hooks/useTransactions';
 import { usePendingTransactions } from 'hooks/transactions/usePendingTransactions';
+import { useSettings } from 'hooks/useSettings';
 import { TransactionTypeEnum, TransactionStatusEnum } from 'types';
 import { formatCurrency } from 'utils/formatCurrency';
 import { Skeleton } from 'components/Skeleton';
@@ -22,6 +23,7 @@ import { Skeleton } from 'components/Skeleton';
 export default function HomeScreen() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
+  const { askForReceipt } = useSettings();
 
   // ─── Estado de paginação das transações pendentes ─────────────────────────
   const [pendingPage, setPendingPage] = useState(0);
@@ -225,6 +227,7 @@ export default function HomeScreen() {
                   key={transaction.id}
                   transaction={transaction}
                   variant="flat"
+                  askForReceipt={askForReceipt}
                   onStatusChanged={refetchPending}
                 />
               )}

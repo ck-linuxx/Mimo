@@ -6,6 +6,7 @@ import { ActionButton } from 'components/ActionButton';
 import { Loading } from 'components/Loading';
 import { TransactionItem } from 'components/TransactionItem';
 import { useTransactions } from 'hooks/useTransactions';
+import { useSettings } from 'hooks/useSettings';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
@@ -59,6 +60,7 @@ function groupByDay(items: TransactionWithCategory[]): DayGroup[] {
 export default function TransactionsScreen() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
+  const { askForReceipt } = useSettings();
 
   const today = new Date();
   const [year, setYear]   = useState(today.getFullYear());
@@ -283,6 +285,7 @@ export default function TransactionsScreen() {
                     key={tx.id}
                     transaction={tx}
                     variant="simple"
+                    askForReceipt={askForReceipt}
                     onStatusChanged={refetch}
                   />
                 ))}

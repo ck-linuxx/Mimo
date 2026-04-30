@@ -1,17 +1,18 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ScrollView,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { eq } from 'drizzle-orm';
-import { cards } from 'db/schema';
-import { consumeSelectionCallback } from 'utils/selectionStore';
+import { eq, and, ne } from 'drizzle-orm';
+import { cards, accounts } from 'db/schema';
+import { consumeSelectionCallback, setSelectionCallback } from 'utils/selectionStore';
 import { generateId } from 'utils/generateId';
 import { PRESET_COLORS } from 'utils/categoryConstants';
 import { darkColors, lightColors } from 'themes/colors';
@@ -22,7 +23,9 @@ import { ScreenWrapper } from 'components/ScreenWrapper';
 import { AppButton } from 'components/AppButton';
 import { ActionButton } from 'components/ActionButton';
 import { ColorPickerCarousel } from 'components/IconPickerGrid';
-import type { Card } from 'types';
+import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
+import { AccountTypeEnum } from 'types';
+import type { Card, Account } from 'types';
 
 const expo = SQLite.openDatabaseSync('db.db');
 const db = drizzle(expo);
@@ -33,6 +36,9 @@ export default function CardCreateScreen() {
   const router = useRouter();
   const { alertConfig, visible, hideAlert, showSuccess, showError } = useCustomAlert();
 
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const isEditing = !!id;
+
   const [name, setName] = useState('');
   const [lastFourDigits, setLastFourDigits] = useState('');
   const [limitDisplay, setLimitDisplay] = useState('');
@@ -40,7 +46,40 @@ export default function CardCreateScreen() {
   const [closingDay, setClosingDay] = useState('');
   const [dueDay, setDueDay] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>(PRESET_COLORS[0]); // vermelho
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    const item = db.select().from(cards).where(eq(cards.id, id)).get();
+    if (item) {
+      setName(item.name);
+      setLastFourDigits(item.lastFourDigits ?? '');
+      setSelectedColor(item.color ?? PRESET_COLORS[0]);
+      if (item.creditLimit != null) {
+        setLimitDisplay(
+          item.creditLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        );
+        setCreditLimit(item.creditLimit);
+      }
+      if (item.closingDay != null) setClosingDay(String(item.closingDay));
+      if (item.dueDay != null) setDueDay(String(item.dueDay));
+      if (item.accountId) {
+        const acct = db.select().from(accounts).where(eq(accounts.id, item.accountId)).get();
+        if (acct) setSelectedAccount(acct);
+      }
+    }
+  }, [id]);
+
+  const openAccountSelect = useCallback(() => {
+    setSelectionCallback<Account>('cardAccount', (account) => {
+      setSelectedAccount(account);
+    });
+    router.push({
+      pathname: '/(stack)/accountSelect',
+      params: { selectedId: selectedAccount?.id },
+    });
+  }, [router, selectedAccount?.id]);
 
   const handleLimitChange = useCallback((text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -75,10 +114,19 @@ export default function CardCreateScreen() {
       return;
     }
 
+    if (!selectedAccount) {
+      showError('Conta obrigatória', 'Vincule uma conta bancária ao cartão antes de continuar.');
+      return;
+    }
+
     const existing = db
       .select({ id: cards.id })
       .from(cards)
-      .where(eq(cards.name, trimmedName))
+      .where(
+        isEditing
+          ? and(eq(cards.name, trimmedName), ne(cards.id, id!))
+          : eq(cards.name, trimmedName),
+      )
       .get();
 
     if (existing) {
@@ -91,56 +139,77 @@ export default function CardCreateScreen() {
 
     setIsSubmitting(true);
     try {
-      const now = Date.now();
-      const id = generateId();
-
       const closingDayNum = closingDay ? parseInt(closingDay, 10) : undefined;
       const dueDayNum = dueDay ? parseInt(dueDay, 10) : undefined;
       const lastFour = lastFourDigits.trim() || undefined;
 
-      await db.insert(cards).values({
-        id,
-        name: trimmedName,
-        lastFourDigits: lastFour ?? null,
-        creditLimit: creditLimit ?? null,
-        closingDay: closingDayNum ?? null,
-        dueDay: dueDayNum ?? null,
-        color: selectedColor,
-        isActive: true,
-        createdAt: now,
-      });
+      if (isEditing) {
+        db.update(cards)
+          .set({
+            name: trimmedName,
+            lastFourDigits: lastFour ?? null,
+            creditLimit: creditLimit ?? null,
+            closingDay: closingDayNum ?? null,
+            dueDay: dueDayNum ?? null,
+            color: selectedColor,
+            accountId: selectedAccount.id,
+          })
+          .where(eq(cards.id, id!))
+          .run();
+        showSuccess('Cartão atualizado!');
+        router.back();
+      } else {
+        const now = Date.now();
+        const newId = generateId();
 
-      const newCard: Card = {
-        id,
-        name: trimmedName,
-        lastFourDigits: lastFour ?? null,
-        creditLimit: creditLimit ?? null,
-        closingDay: closingDayNum ?? null,
-        dueDay: dueDayNum ?? null,
-        accountId: null,
-        color: selectedColor,
-        isActive: true,
-        createdAt: now,
-      };
+        await db.insert(cards).values({
+          id: newId,
+          name: trimmedName,
+          lastFourDigits: lastFour ?? null,
+          creditLimit: creditLimit ?? null,
+          closingDay: closingDayNum ?? null,
+          dueDay: dueDayNum ?? null,
+          color: selectedColor,
+          accountId: selectedAccount.id,
+          isActive: true,
+          createdAt: now,
+        });
 
-      const cb = consumeSelectionCallback<{ type: 'card'; item: Card }>('paymentMethod');
-      cb?.({ type: 'card', item: newCard });
+        const newCard: Card = {
+          id: newId,
+          name: trimmedName,
+          lastFourDigits: lastFour ?? null,
+          creditLimit: creditLimit ?? null,
+          closingDay: closingDayNum ?? null,
+          dueDay: dueDayNum ?? null,
+          accountId: selectedAccount.id,
+          color: selectedColor,
+          isActive: true,
+          createdAt: now,
+        };
 
-      showSuccess('Cartão criado!');
-      router.dismiss(2);
+        const cb = consumeSelectionCallback<{ type: 'card'; item: Card }>('paymentMethod');
+        cb?.({ type: 'card', item: newCard });
+
+        showSuccess('Cartão criado!');
+        router.dismiss(2);
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Erro inesperado';
-      showError('Erro ao criar cartão', message);
+      showError(isEditing ? 'Erro ao atualizar cartão' : 'Erro ao criar cartão', message);
     } finally {
       setIsSubmitting(false);
     }
   }, [
+    id,
+    isEditing,
     name,
     lastFourDigits,
     creditLimit,
     closingDay,
     dueDay,
     selectedColor,
+    selectedAccount,
     router,
     showSuccess,
     showError,
@@ -152,7 +221,7 @@ export default function CardCreateScreen() {
       <View className="flex-row items-center justify-between px-6 pb-4 pt-2">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />
         <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
-          Novo Cartão
+          {isEditing ? 'Editar Cartão' : 'Novo Cartão'}
         </Text>
         <View className="h-10 w-10" />
       </View>
@@ -206,6 +275,57 @@ export default function CardCreateScreen() {
               autoCorrect={false}
             />
           </View>
+        </View>
+
+        {/* Conta bancária — obrigatório */}
+        <View className="mb-6">
+          <Text className="mb-3 text-base font-semibold" style={{ color: colors.textPrimary }}>
+            Conta bancária
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={openAccountSelect}
+            className="rounded-2xl px-4 flex-row items-center justify-between"
+            style={{
+              backgroundColor: colors.cardBackground,
+              borderWidth: 1,
+              borderColor: selectedAccount ? colors.primaryGold : colors.borderColor,
+              height: 56,
+            }}>
+            {selectedAccount ? (
+              <View className="flex-row items-center gap-3 flex-1">
+                <View
+                  className="w-9 h-9 rounded-xl items-center justify-center"
+                  style={{ backgroundColor: (selectedAccount.color ?? colors.primaryGold) + '25' }}>
+                  <Feather
+                    name={(selectedAccount.icon as React.ComponentProps<typeof Feather>['name']) ?? 'briefcase'}
+                    size={18}
+                    color={selectedAccount.color ?? colors.primaryGold}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold" style={{ color: colors.textPrimary }} numberOfLines={1}>
+                    {selectedAccount.name}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                    {ACCOUNT_TYPE_LABELS[selectedAccount.type as AccountTypeEnum]}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View className="flex-row items-center gap-3 flex-1">
+                <View
+                  className="w-9 h-9 rounded-xl items-center justify-center"
+                  style={{ backgroundColor: colors.iconBackground }}>
+                  <Feather name="briefcase" size={18} color={colors.textSecondary} />
+                </View>
+                <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                  Selecionar conta
+                </Text>
+              </View>
+            )}
+            <Feather name="chevron-right" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         {/* Últimos 4 dígitos */}
@@ -343,8 +463,8 @@ export default function CardCreateScreen() {
         </View>
 
         <AppButton
-          label="Criar Cartão"
-          loadingLabel="Criando..."
+          label={isEditing ? 'Salvar Alterações' : 'Criar Cartão'}
+          loadingLabel={isEditing ? 'Salvando...' : 'Criando...'}
           loading={isSubmitting}
           onPress={handleCreate}
         />

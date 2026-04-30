@@ -80,6 +80,68 @@ Consulta `accounts` onde `isActive = true`.
 ### `useCards.ts`
 Consulta `cards` onde `isActive = true`.
 
+---
+
+## Pasta `transactions/`
+
+### `useCardBillingSummary.ts`
+Resumo financeiro de um ciclo de fatura específico.
+
+**Assinatura:** `useCardBillingSummary(cardId, cycleStartTs?, cycleEndTs?)`
+
+**Retorno:** `{ data: { totalSpent: number, transactionCount: number }, loading, error, refetch }`
+
+- Soma `amount` onde `cardId + type=expense + status!=cancelled + date in cycle`
+- Retorna zeros quando os timestamps são `undefined`
+
+---
+
+### `useCardBillingTransactions.ts`
+Listagem completa de transações de um ciclo de fatura.
+
+**Assinatura:** `useCardBillingTransactions(cardId, cycleStartTs?, cycleEndTs?)`
+
+**Retorno:** `{ data: TransactionWithCategory[], loading, error, refetch }`
+
+- LEFT JOIN em `categories` e `transactionGroups`
+- Exclui `status=cancelled`, ordena por `date DESC`
+
+---
+
+### `useCardTransactionsPaginated.ts`
+Paginação real de transações de um cartão (via `limit/offset`).
+
+**Assinatura:** `useCardTransactionsPaginated(cardId, page, pageSize)`
+
+**Retorno:** `{ data: TransactionWithCategory[], totalCount: number, loading, error, refetch }`
+
+- Duas queries: dados paginados + COUNT total
+- Exclui `status=cancelled`
+
+---
+
+### `useCardCategoryTotals.ts`
+Totais agrupados por categoria para DonutChart.
+
+**Assinatura:** `useCardCategoryTotals(cardId, months)`
+
+**Retorno:** `{ data: DonutChartDataItem[], loading, error, refetch }`
+
+- GROUP BY `categoryId`, SUM `amount` onde `type=expense + status=paid`
+- `date >= getMonthsAgoStartTs(months)`
+
+---
+
+### `useCardMonthlyTotals.ts`
+Totais mensais para BarChart.
+
+**Assinatura:** `useCardMonthlyTotals(cardId, months)`
+
+**Retorno:** `{ data: MonthlyTotal[], loading, error, refetch }` onde `MonthlyTotal = { label: string, value: number }`
+
+- Itera `getLastNMonths(months)`, executa SUM por mês individualmente
+- `type=expense + status=paid`
+
 ### `useGoals.ts`
 Consulta `financial_goals` onde `status = GoalStatusEnum.Active`.
 

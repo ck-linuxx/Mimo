@@ -25,6 +25,8 @@ interface TransactionItemProps {
   variant?: 'card' | 'simple' | 'flat';
   showTime?: boolean;
   onStatusChanged?: () => void;
+  /** Quando true, exibe o modal de comprovante ao marcar como pago. @default true */
+  askForReceipt?: boolean;
 }
 
 export function TransactionItem({
@@ -33,6 +35,7 @@ export function TransactionItem({
   variant = 'card',
   showTime = false,
   onStatusChanged,
+  askForReceipt = true,
 }: TransactionItemProps) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
@@ -59,8 +62,7 @@ export function TransactionItem({
       nextStatus,
       () => {
         swipeableRef.current?.close();
-        if (!isPaid) {
-          // Foi marcado como pago — perguntar comprovante
+        if (!isPaid && askForReceipt) {
           setShowReceiptModal(true);
         }
         onStatusChanged?.();

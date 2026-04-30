@@ -151,6 +151,9 @@ export type NewAttachment = typeof attachments.$inferInsert;
 export const settings = sqliteTable('settings', {
   id: integer('id').primaryKey(),
   theme: text('theme', { enum: themeValues }).notNull().default('light'),
+  biometricsEnabled: integer('biometrics_enabled', { mode: 'boolean' }).notNull().default(false),
+  notificationsEnabled: integer('notifications_enabled', { mode: 'boolean' }).notNull().default(true),
+  askForReceipt: integer('ask_for_receipt', { mode: 'boolean' }).notNull().default(true),
   updatedAt: integer('updated_at').notNull(),
 });
 
