@@ -40,7 +40,7 @@ export default function CardBillingDetailScreen() {
     useCardBillingSummary(cardId, cycleStartTs, cycleEndTs);
 
   const [page, setPage]         = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
 
   const { data: txList, totalCount: txTotal, loading: txLoading, refetch: refetchTx } =
     useCardBillingTransactions(cardId, cycleStartTs, cycleEndTs, page, pageSize);

@@ -15,6 +15,9 @@ export default function StackGroupLayout() {
       <Stack.Screen name="categoryCreate" />
       <Stack.Screen name="goalSelect" />
       <Stack.Screen name="goalCreate" />
+      <Stack.Screen name="goalsManage" />
+      <Stack.Screen name="goalDetail" />
+      <Stack.Screen name="goalEdit" />
       <Stack.Screen name="editTransaction" />
       <Stack.Screen name="paymentMethodSelect" />
       <Stack.Screen name="accountCreate" />

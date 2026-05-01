@@ -477,7 +477,7 @@ export default function SettingsScreen() {
       title: 'Metas Financeiras',
       subtitle: 'Visualizar e gerenciar suas metas',
       accentColor: colors.primaryGold,
-      onPress: () => router.push('/goalSelect'),
+      onPress: () => router.push('/goalsManage'),
     },
     {
       icon: 'info' as const,

@@ -30,3 +30,4 @@ Toda pasta de funcionalidade **deve** conter um `CLAUDE.md` próprio descrevendo
 | `hooks/` | [hooks/CLAUDE.md](hooks/CLAUDE.md) | Hooks de query SQLite dedicados por entidade + `useCustomAlert` |
 | `components/` | [components/CLAUDE.md](components/CLAUDE.md) | Componentes React Native com regras de theming via `themes/colors.ts` |
 | `components/charts/` | [components/charts/CLAUDE.md](components/charts/CLAUDE.md) | Gráficos interativos via @wuba/react-native-echarts + react-native-svg (DonutChart) |
+| `app/(stack)/` | [app/(stack)/CLAUDE.md](app/(stack)/CLAUDE.md) | Telas em stack — fluxo dedicado de metas (goalsManage/goalDetail/goalEdit) separado do fluxo de seleção (goalSelect) |
