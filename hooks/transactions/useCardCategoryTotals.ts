@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, desc, eq, gte, sql } from 'drizzle-orm';
 import { categories, transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 import { getMonthsAgoStartTs } from 'utils/billingCycle';
 import type { DonutChartDataItem } from 'components/charts/DonutChart';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 interface UseCardCategoryTotalsResult {
   data: DonutChartDataItem[];

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -373,9 +374,17 @@ export default function SettingsScreen() {
 
   const { alertConfig, visible, hideAlert, showError, showSuccess, showInfo } = useCustomAlert();
 
-  const accounts = useAccounts();
-  const cards = useCards();
-  const goals = useGoals();
+  const { data: accountsData, loading: loadingAccounts, refetch: refetchAccounts } = useAccounts();
+  const { data: cardsData, loading: loadingCards, refetch: refetchCards } = useCards();
+  const { data: goalsData, loading: loadingGoals, refetch: refetchGoals } = useGoals();
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchAccounts();
+      refetchCards();
+      refetchGoals();
+    }, [refetchAccounts, refetchCards, refetchGoals]),
+  );
 
   const [isTogglingBiometrics, setIsTogglingBiometrics] = useState(false);
   const [activeTab, setActiveTab] = useState<'accounts' | 'cards'>('accounts');
@@ -459,9 +468,9 @@ export default function SettingsScreen() {
   );
 
   const statsItems = [
-    { label: 'Contas', value: accounts.loading ? '-' : String(accounts.data.length), icon: 'credit-card' as const, color: colors.primaryGold },
-    { label: 'Cartões', value: cards.loading ? '-' : String(cards.data.length), icon: 'credit-card' as const, color: colors.incomeColor },
-    { label: 'Metas', value: goals.loading ? '-' : String(goals.data.length), icon: 'target' as const, color: colors.expenseColor },
+    { label: 'Contas', value: loadingAccounts ? '-' : String(accountsData.length), icon: 'credit-card' as const, color: colors.primaryGold },
+    { label: 'Cartões', value: loadingCards ? '-' : String(cardsData.length), icon: 'credit-card' as const, color: colors.incomeColor },
+    { label: 'Metas', value: loadingGoals ? '-' : String(goalsData.length), icon: 'target' as const, color: colors.expenseColor },
   ];
 
   const menuItems = [
@@ -505,29 +514,6 @@ export default function SettingsScreen() {
 
         {/* Appearance */}
         <ThemeToggle />
-
-        {/* Stats */}
-
-        <View className="mb-3 rounded-2xl bg-light-card-background p-4 dark:bg-dark-card-background">
-          <Text className="mb-4 text-lg font-bold text-light-text-primary dark:text-dark-text-primary">
-            Resumo
-          </Text>
-          <View className="flex-row gap-3">
-            {statsItems.map((stat) => (
-              <View
-                key={stat.label}
-                className="flex-1 items-center rounded-xl bg-light-icon-background p-3 dark:bg-dark-icon-background">
-                <Feather name={stat.icon} size={24} color={stat.color} />
-                <Text className="mt-2 text-xs text-light-text-secondary dark:text-dark-text-secondary">
-                  {stat.label}
-                </Text>
-                <Text className="text-lg font-bold" style={{ color: colors.textPrimary }}>
-                  {stat.value}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
 
         {/* Accounts / Cards */}
         <View className="mb-3 rounded-2xl bg-light-card-background p-4 dark:bg-dark-card-background">
@@ -577,11 +563,11 @@ export default function SettingsScreen() {
 
           {/* Tab content */}
           {activeTab === 'accounts' ? (
-            accounts.loading ? (
+            loadingAccounts ? (
               <View className="items-center py-6">
                 <ActivityIndicator color={colors.primaryGold} />
               </View>
-            ) : accounts.data.length === 0 ? (
+            ) : accountsData.length === 0 ? (
               <View className="items-center py-6">
                 <Feather name="credit-card" size={32} color={colors.disabled} />
                 <Text className="mt-2 text-center text-sm text-light-text-secondary dark:text-dark-text-secondary">
@@ -589,13 +575,13 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             ) : (
-              accounts.data.map((account) => <AccountCard key={account.id} item={account} />)
+              accountsData.map((account) => <AccountCard key={account.id} item={account} />)
             )
-          ) : cards.loading ? (
+          ) : loadingCards ? (
             <View className="items-center py-6">
               <ActivityIndicator color={colors.primaryGold} />
             </View>
-          ) : cards.data.length === 0 ? (
+          ) : cardsData.length === 0 ? (
             <View className="items-center py-6">
               <Feather name="credit-card" size={32} color={colors.disabled} />
               <Text className="mt-2 text-center text-sm text-light-text-secondary dark:text-dark-text-secondary">
@@ -603,7 +589,7 @@ export default function SettingsScreen() {
               </Text>
             </View>
           ) : (
-            cards.data.map((card) => <CreditCardItem key={card.id} item={card} />)
+            cardsData.map((card) => <CreditCardItem key={card.id} item={card} />)
           )}
         </View>
 

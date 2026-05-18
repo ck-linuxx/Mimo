@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, eq, lte, asc, sql } from 'drizzle-orm';
 import { transactions, categories, transactionGroups } from 'db/schema';
 import { TransactionStatusEnum } from 'types';
 import type { TransactionWithCategory } from 'types/transactionView';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 interface UsePendingTransactionsResult {
   data: TransactionWithCategory[];

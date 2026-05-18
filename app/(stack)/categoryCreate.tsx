@@ -14,8 +14,7 @@ import Animated, {
 // (AnimatedColorItem removido — usa ColorPickerCarousel de components/IconPickerGrid)
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { categories } from 'db/schema';
 import { consumeSelectionCallback } from 'utils/selectionStore';
@@ -32,8 +31,7 @@ import { IconPickerGrid, ColorPickerCarousel } from 'components/IconPickerGrid';
 import { CategoryTypeEnum, TransactionTypeEnum } from 'types';
 import type { Category } from 'types';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 const TRANSACTION_TYPE_TO_CATEGORY_TYPE: Record<TransactionTypeEnum, CategoryTypeEnum> = {
   [TransactionTypeEnum.Income]: CategoryTypeEnum.Income,

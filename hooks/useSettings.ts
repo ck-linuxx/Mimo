@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { settings } from 'db/schema';
 import type { Settings } from 'db/schema';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 interface UseSettingsResult {
   biometricsEnabled: boolean;

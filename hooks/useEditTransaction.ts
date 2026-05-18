@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, eq, gte } from 'drizzle-orm';
 import { transactions } from 'db/schema';
 import { TransactionStatusEnum } from 'types';
@@ -13,6 +12,7 @@ interface EditData {
   status?: TransactionStatusEnum;
   paidAt?: number | null;
   frequency?: FrequencyEnum | null;
+  isSubscription?: boolean;
 }
 
 interface EditTransactionParams {
@@ -23,8 +23,7 @@ interface EditTransactionParams {
   data: EditData;
 }
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 export function useEditTransaction() {
   const [loading, setLoading] = useState(false);

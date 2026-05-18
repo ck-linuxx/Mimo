@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   Text,
   TextInput,
   TouchableOpacity,
@@ -27,8 +28,8 @@ import type { Account, Card } from 'types';
 
 type TabType = 'account' | 'card';
 
-const CONTAINER_PADDING = 4;
-const TAB_VALUES: TabType[] = ['account', 'card'];
+const SPRING_PRESS_IN = { damping: 15, stiffness: 500 } as const;
+const SPRING_PRESS_OUT = { damping: 7, stiffness: 400, mass: 0.6 } as const;
 
 export default function PaymentMethodSelectScreen() {
   const { theme } = useTheme();
@@ -58,26 +59,21 @@ export default function PaymentMethodSelectScreen() {
     }, [refetchAccounts, refetchCards]),
   );
 
-  // Toggle animado (apenas para despesa)
-  const indicatorPos = useSharedValue(TAB_VALUES.indexOf(activeTab));
-  const containerWidth = useSharedValue(0);
+  const scaleAccount = useSharedValue(1);
+  const scaleCard = useSharedValue(1);
 
-  const indicatorStyle = useAnimatedStyle(() => {
-    const itemWidth = Math.max(0, (containerWidth.value - CONTAINER_PADDING * 2) / 2);
-    return {
-      width: itemWidth,
-      transform: [{ translateX: indicatorPos.value * itemWidth }],
-    };
-  });
+  const accountTabStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scaleAccount.value }],
+  }));
 
-  const handleTabChange = useCallback(
-    (tab: TabType) => {
-      indicatorPos.value = withSpring(TAB_VALUES.indexOf(tab), { damping: 20, stiffness: 500 });
-      setActiveTab(tab);
-      setSearch('');
-    },
-    [indicatorPos],
-  );
+  const cardTabStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scaleCard.value }],
+  }));
+
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    setSearch('');
+  }, []);
 
   const handleSelectAccount = useCallback(
     (account: Account) => {
@@ -130,54 +126,45 @@ export default function PaymentMethodSelectScreen() {
 
       {/* Toggle Conta | Cartão (só para despesa) */}
       {isExpense && (
-        <View className="px-6 pb-4">
-          <View
-            className="flex-row overflow-hidden rounded-2xl p-1"
-            style={{ backgroundColor: colors.cardBackground, position: 'relative' }}
-            onLayout={(e) => {
-              containerWidth.value = e.nativeEvent.layout.width;
-            }}>
-            <Animated.View
-              style={[
-                {
-                  position: 'absolute',
-                  top: CONTAINER_PADDING,
-                  bottom: CONTAINER_PADDING,
-                  left: CONTAINER_PADDING,
-                  borderRadius: 10,
-                  backgroundColor: colors.primaryGold,
-                },
-                indicatorStyle,
-              ]}
-            />
-            <TouchableOpacity
-              className="flex-1 items-center rounded-xl py-3"
-              style={{ zIndex: 1 }}
-              onPress={() => handleTabChange('account')}
-              activeOpacity={0.7}>
+        <View className="flex-row gap-2 px-6 pb-4">
+          <Animated.View style={[{ flex: 1 }, accountTabStyle]}>
+            <Pressable
+              className="flex-row items-center justify-center gap-2 rounded-xl p-3"
+              style={{ backgroundColor: activeTab === 'account' ? colors.primaryGold : colors.iconBackground }}
+              onPressIn={() => { scaleAccount.value = withSpring(0.94, SPRING_PRESS_IN); }}
+              onPressOut={() => { scaleAccount.value = withSpring(1, SPRING_PRESS_OUT); }}
+              onPress={() => handleTabChange('account')}>
+              <Feather
+                name="briefcase"
+                size={16}
+                color={activeTab === 'account' ? colors.primaryGoldContrast : colors.textSecondary}
+              />
               <Text
-                className="text-sm font-semibold"
-                style={{
-                  color:
-                    activeTab === 'account' ? colors.primaryGoldContrast : colors.textSecondary,
-                }}>
+                className="text-sm font-medium"
+                style={{ color: activeTab === 'account' ? colors.primaryGoldContrast : colors.textSecondary }}>
                 Conta
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="flex-1 items-center rounded-xl py-3"
-              style={{ zIndex: 1 }}
-              onPress={() => handleTabChange('card')}
-              activeOpacity={0.7}>
+            </Pressable>
+          </Animated.View>
+          <Animated.View style={[{ flex: 1 }, cardTabStyle]}>
+            <Pressable
+              className="flex-row items-center justify-center gap-2 rounded-xl p-3"
+              style={{ backgroundColor: activeTab === 'card' ? colors.primaryGold : colors.iconBackground }}
+              onPressIn={() => { scaleCard.value = withSpring(0.94, SPRING_PRESS_IN); }}
+              onPressOut={() => { scaleCard.value = withSpring(1, SPRING_PRESS_OUT); }}
+              onPress={() => handleTabChange('card')}>
+              <Feather
+                name="credit-card"
+                size={16}
+                color={activeTab === 'card' ? colors.primaryGoldContrast : colors.textSecondary}
+              />
               <Text
-                className="text-sm font-semibold"
-                style={{
-                  color: activeTab === 'card' ? colors.primaryGoldContrast : colors.textSecondary,
-                }}>
+                className="text-sm font-medium"
+                style={{ color: activeTab === 'card' ? colors.primaryGoldContrast : colors.textSecondary }}>
                 Cartão
               </Text>
-            </TouchableOpacity>
-          </View>
+            </Pressable>
+          </Animated.View>
         </View>
       )}
 

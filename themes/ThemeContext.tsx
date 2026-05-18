@@ -1,13 +1,11 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { colorScheme } from 'nativewind';
 import { settings } from 'db/schema';
 import type { ThemeValue } from 'db/schema';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 interface ThemeContextValue {
   theme: ThemeValue;

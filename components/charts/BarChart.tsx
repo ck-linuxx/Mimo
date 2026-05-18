@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { InteractionManager, StyleSheet, Text, View } from 'react-native';
 import * as echarts from 'echarts/core';
 import { BarChart as EBarChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
@@ -38,8 +38,6 @@ export interface BarChartProps {
   xAxisLabels: string[];
   /** Altura do componente em dp. @default 260 */
   height?: number;
-  /** Exibe loading enquanto true. @default false */
-  isLoading?: boolean;
   /** Texto do empty state quando não há dados com valores > 0. */
   emptyText?: string;
 }
@@ -50,7 +48,6 @@ export function BarChart({
   series,
   xAxisLabels,
   height = 260,
-  isLoading = false,
   emptyText = 'Nenhum dado disponível',
 }: BarChartProps) {
   const { theme } = useTheme();
@@ -65,8 +62,10 @@ export function BarChart({
   const buildOption = useCallback(() => {
     const echartsOption = {
       backgroundColor: 'transparent',
+      animation: false,
       tooltip: {
         trigger: 'axis' as const,
+        confine: true,
         axisPointer: { type: 'shadow' as const },
         backgroundColor: colors.cardBackground,
         borderColor: colors.borderColor,
@@ -86,7 +85,6 @@ export function BarChart({
         right: 12,
         bottom: 40,
         left: 52,
-        containLabel: false,
       },
       xAxis: {
         type: 'category' as const,
@@ -148,14 +146,21 @@ export function BarChart({
     if (!chartRef.current || containerWidth === 0) return;
 
     if (!chartInstanceRef.current) {
-      chartInstanceRef.current = echarts.init(chartRef.current, 'light', {
-        renderer: 'svg',
-        width: containerWidth,
-        height,
+      // Adia init até após animações de navegação terminarem
+      const task = InteractionManager.runAfterInteractions(() => {
+        if (!chartRef.current) return;
+        chartInstanceRef.current = echarts.init(chartRef.current, 'light', {
+          renderer: 'svg',
+          width: containerWidth,
+          height,
+        });
+        chartInstanceRef.current.setOption(buildOption(), { notMerge: true });
       });
+      return () => task.cancel();
     }
 
-    chartInstanceRef.current.setOption(buildOption(), { notMerge: true });
+    chartInstanceRef.current.resize({ width: containerWidth, height });
+    chartInstanceRef.current.setOption(buildOption(), { notMerge: false, lazyUpdate: true });
   }, [buildOption, containerWidth, height]);
 
   // Dispose apenas no unmount
@@ -170,19 +175,20 @@ export function BarChart({
     <View
       style={{ height }}
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}>
+      {/* SvgChart sempre montado — evita dispose/reinit ao trocar loading/dados */}
       <SvgChart ref={chartRef} />
-      {!isLoading && !hasData && (
+      {!hasData ? (
         <View
           style={[
             StyleSheet.absoluteFill,
-            { alignItems: 'center', justifyContent: 'center', gap: 12 },
+            { alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: colors.cardBackground },
           ]}>
           <Feather name="bar-chart-2" size={48} color={colors.textSecondary} />
           <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm text-center">
             {emptyText}
           </Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }

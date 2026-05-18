@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, gte, lte, desc, eq } from 'drizzle-orm';
 import { transactions, categories, transactionGroups } from 'db/schema';
 import type { TransactionWithCategory } from 'types/transactionView';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 export function useTransactions(year: number, month: number) {
   const [data, setData] = useState<TransactionWithCategory[]>([]);

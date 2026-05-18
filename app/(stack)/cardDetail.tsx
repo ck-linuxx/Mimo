@@ -14,8 +14,7 @@ import Animated, {
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { cards } from 'db/schema';
 import { darkColors, lightColors } from 'themes/colors';
@@ -40,10 +39,6 @@ import type { Card } from 'types';
 
 const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
 
-// ─── DB ───────────────────────────────────────────────────────────────────────
-
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
 
 // ─── Opções de meses disponíveis no seletor ───────────────────────────────────
 

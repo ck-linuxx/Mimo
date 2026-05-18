@@ -7,8 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { useForm } from '@tanstack/react-form';
 import { z } from 'zod';
 import { useRouter } from 'expo-router';
@@ -37,11 +36,6 @@ import {
   PAYMENT_TYPE_OPTIONS,
 } from 'utils/transactionLabels';
 
-// ─── DB ───────────────────────────────────────────────────────────────────────
-
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
-
 // ─── Schema ────────────────────────────────────────────────────────────────────
 
 interface FormValues {
@@ -58,6 +52,7 @@ interface FormValues {
   frequency: FrequencyEnum | '';
   status: TransactionStatusEnum;
   isInstallmentValue: boolean;
+  isSubscription: boolean;
 }
 
 const formSchema = z
@@ -75,6 +70,7 @@ const formSchema = z
     frequency: z.union([z.enum(FrequencyEnum), z.literal('')]),
     status: z.enum(TransactionStatusEnum),
     isInstallmentValue: z.boolean(),
+    isSubscription: z.boolean(),
   })
   .superRefine((data, ctx) => {
     if (data.paymentType === GroupTypeEnum.Installment && data.installments < 2) {
@@ -107,6 +103,7 @@ const defaultValues: FormValues = {
   frequency: '',
   status: TransactionStatusEnum.Pending,
   isInstallmentValue: false,
+  isSubscription: false,
 };
 
 // ─── Modais ────────────────────────────────────────────────────────────────────
@@ -168,6 +165,7 @@ export default function AddTransaction() {
             accountId: value.accountId || null,
             cardId: value.cardId || null,
             goalId: value.goalId || null,
+            isSubscription: value.isSubscription,
             createdAt: now,
             updatedAt: now,
           });
@@ -180,78 +178,85 @@ export default function AddTransaction() {
             ? value.amount
             : value.amount / value.installments;
 
-          await db.insert(transactionGroups).values({
-            id: groupId,
-            type: GroupTypeEnum.Installment,
-            description: value.description,
-            amount: totalAmount,
-            transactionType: value.type,
-            categoryId: value.categoryId || null,
-            accountId: value.accountId || null,
-            cardId: value.cardId || null,
-            goalId: value.goalId || null,
-            totalInstallments: value.installments,
-            startDate: value.date.getTime(),
-            createdAt: now,
-          });
-
-          for (let i = 1; i <= value.installments; i++) {
-            const installDate = new Date(value.date);
-            installDate.setMonth(installDate.getMonth() + (i - 1));
-            await db.insert(transactions).values({
-              id: generateId(),
+          db.transaction((tx) => {
+            tx.insert(transactionGroups).values({
+              id: groupId,
+              type: GroupTypeEnum.Installment,
               description: value.description,
-              amount: installmentAmount,
-              type: value.type,
-              date: installDate.getTime(),
-              status: i === 1 ? value.status : TransactionStatusEnum.Pending,
-              paidAt: i === 1 ? paidAt : null,
+              amount: totalAmount,
+              transactionType: value.type,
               categoryId: value.categoryId || null,
               accountId: value.accountId || null,
               cardId: value.cardId || null,
               goalId: value.goalId || null,
-              transactionGroupId: groupId,
-              installmentNumber: i,
+              totalInstallments: value.installments,
+              startDate: value.date.getTime(),
               createdAt: now,
-              updatedAt: now,
-            });
-          }
+            }).run();
+
+            for (let i = 1; i <= value.installments; i++) {
+              const installDate = new Date(value.date);
+              installDate.setMonth(installDate.getMonth() + (i - 1));
+              tx.insert(transactions).values({
+                id: generateId(),
+                description: value.description,
+                amount: installmentAmount,
+                type: value.type,
+                date: installDate.getTime(),
+                status: i === 1 ? value.status : TransactionStatusEnum.Pending,
+                paidAt: i === 1 ? paidAt : null,
+                categoryId: value.categoryId || null,
+                accountId: value.accountId || null,
+                cardId: value.cardId || null,
+                goalId: value.goalId || null,
+                transactionGroupId: groupId,
+                installmentNumber: i,
+                isSubscription: value.isSubscription,
+                createdAt: now,
+                updatedAt: now,
+              }).run();
+            }
+          });
         } else if (value.paymentType === GroupTypeEnum.Recurring) {
           const groupId = generateId();
-          await db.insert(transactionGroups).values({
-            id: groupId,
-            type: GroupTypeEnum.Recurring,
-            description: value.description,
-            amount: value.amount,
-            transactionType: value.type,
-            categoryId: value.categoryId || null,
-            accountId: value.accountId || null,
-            cardId: value.cardId || null,
-            goalId: value.goalId || null,
-            frequency: value.frequency as FrequencyEnum,
-            startDate: value.date.getTime(),
-            createdAt: now,
-          });
 
-          for (let i = 0; i < 12; i++) {
-            const recurringDate = addByFrequency(value.date, value.frequency as FrequencyEnum, i);
-            await db.insert(transactions).values({
-              id: generateId(),
+          db.transaction((tx) => {
+            tx.insert(transactionGroups).values({
+              id: groupId,
+              type: GroupTypeEnum.Recurring,
               description: value.description,
               amount: value.amount,
-              type: value.type,
-              date: recurringDate.getTime(),
-              status: i === 0 ? value.status : TransactionStatusEnum.Pending,
-              paidAt: i === 0 ? paidAt : null,
+              transactionType: value.type,
               categoryId: value.categoryId || null,
               accountId: value.accountId || null,
               cardId: value.cardId || null,
               goalId: value.goalId || null,
-              transactionGroupId: groupId,
+              frequency: value.frequency as FrequencyEnum,
+              startDate: value.date.getTime(),
               createdAt: now,
-              updatedAt: now,
-            });
-          }
+            }).run();
+
+            for (let i = 0; i < 12; i++) {
+              const recurringDate = addByFrequency(value.date, value.frequency as FrequencyEnum, i);
+              tx.insert(transactions).values({
+                id: generateId(),
+                description: value.description,
+                amount: value.amount,
+                type: value.type,
+                date: recurringDate.getTime(),
+                status: i === 0 ? value.status : TransactionStatusEnum.Pending,
+                paidAt: i === 0 ? paidAt : null,
+                categoryId: value.categoryId || null,
+                accountId: value.accountId || null,
+                cardId: value.cardId || null,
+                goalId: value.goalId || null,
+                transactionGroupId: groupId,
+                isSubscription: value.isSubscription,
+                createdAt: now,
+                updatedAt: now,
+              }).run();
+            }
+          });
         }
 
         showSuccess('Transação criada com sucesso!');
@@ -262,6 +267,7 @@ export default function AddTransaction() {
         setSelectedAccount(null);
         setSelectedCard(null);
         setSelectedGoal(null);
+        setInstallmentsDisplay('2');
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Erro inesperado';
         showError('Erro ao criar transação', message);
@@ -1064,6 +1070,53 @@ export default function AddTransaction() {
             </View>
           )}
         </form.Field>
+
+        {/* Assinatura */}
+        <form.Subscribe selector={(s) => s.values.paymentType}>
+          {(paymentType) =>
+            paymentType === GroupTypeEnum.Recurring ? (
+              <form.Field name="isSubscription">
+                {(field) => (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => field.handleChange(!field.state.value)}
+                    className="flex-row items-center rounded-xl p-3"
+                    style={{
+                      backgroundColor: colors.cardBackground,
+                      borderWidth: 1,
+                      borderColor: field.state.value ? colors.primaryGold : colors.borderColor,
+                    }}
+                  >
+                    <View
+                      className="w-5 h-5 rounded mr-3 items-center justify-center"
+                      style={{
+                        backgroundColor: field.state.value ? colors.primaryGold : 'transparent',
+                        borderWidth: 2,
+                        borderColor: field.state.value ? colors.primaryGold : colors.borderColor,
+                      }}
+                    >
+                      {field.state.value && (
+                        <Feather name="check" size={14} color={colors.primaryGoldContrast} />
+                      )}
+                    </View>
+                    <View className="flex-1">
+                      <Text
+                        className="font-medium text-base"
+                        style={{ color: colors.textPrimary }}
+                      >
+                        É uma assinatura
+                      </Text>
+                      <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                        Netflix, Spotify, planos mensais...
+                      </Text>
+                    </View>
+                    <Feather name="repeat" size={18} color={field.state.value ? colors.primaryGold : colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </form.Field>
+            ) : null
+          }
+        </form.Subscribe>
 
         {/* Botão Criar */}
         <form.Subscribe selector={(s) => s.isSubmitting}>

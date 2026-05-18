@@ -16,8 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { financialGoals } from 'db/schema';
 import { darkColors, lightColors } from 'themes/colors';
@@ -34,11 +33,6 @@ import type { FinancialGoal } from 'types/financialGoal';
 // ─── Spring constants ─────────────────────────────────────────────────────────
 
 const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
-
-// ─── DB ───────────────────────────────────────────────────────────────────────
-
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 

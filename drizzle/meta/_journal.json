@@ -43,6 +43,34 @@
       "when": 1777419274000,
       "tag": "0005_card_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1777598232238,
+      "tag": "0006_mysterious_master_mold",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1746230400000,
+      "tag": "0007_remove_expense_classification",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1746835200000,
+      "tag": "0008_drop_tags_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1779068164052,
+      "tag": "0009_bored_arclight",
+      "breakpoints": true
     }
   ]
 }

@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, eq, inArray } from 'drizzle-orm';
 import { attachments, transactions } from 'db/schema';
 import type { Attachment } from 'types';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 /**
  * Busca todos os anexos (isReceipt=false) de todas as transações de um grupo.

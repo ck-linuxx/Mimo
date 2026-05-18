@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 import { getLastNMonths } from 'utils/billingCycle';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 export interface MonthlyTotal {
   label: string;

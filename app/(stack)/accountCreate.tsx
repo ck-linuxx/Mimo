@@ -13,8 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq, and, ne } from 'drizzle-orm';
 import { accounts } from 'db/schema';
 import { consumeSelectionCallback } from 'utils/selectionStore';
@@ -32,8 +31,7 @@ import { AccountTypeEnum } from 'types';
 import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
 import type { Account } from 'types';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
 

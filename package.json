@@ -12,7 +12,9 @@
     "prebuild": "expo prebuild",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:apk": "ANDROID_HOME=$HOME/Android/Sdk eas build --platform android --profile preview --local",
+    "build:aab": "eas build --platform android --profile production"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.3.10",
@@ -52,6 +54,7 @@
     "@babel/core": "^7.20.0",
     "@types/react": "~19.1.10",
     "drizzle-kit": "^0.31.10",
+    "eas-cli": "^18.9.1",
     "eslint": "^9.25.1",
     "eslint-config-expo": "~10.0.0",
     "eslint-config-prettier": "^10.1.2",

@@ -8,8 +8,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq, and, ne } from 'drizzle-orm';
 import { cards, accounts } from 'db/schema';
 import { consumeSelectionCallback, setSelectionCallback } from 'utils/selectionStore';
@@ -27,8 +26,7 @@ import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
 import { AccountTypeEnum } from 'types';
 import type { Card, Account } from 'types';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 export default function CardCreateScreen() {
   const { theme } = useTheme();

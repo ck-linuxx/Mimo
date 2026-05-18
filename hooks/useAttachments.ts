@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq, and } from 'drizzle-orm';
 import { attachments } from 'db/schema';
 import type { Attachment, NewAttachment } from 'types/attachment';
 
 const MAX_ATTACHMENTS = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 export function useAttachments(transactionId?: string) {
   const [data, setData] = useState<Attachment[]>([]);
@@ -50,6 +49,12 @@ export function useAttachments(transactionId?: string) {
 
       if (existing.length >= MAX_ATTACHMENTS) {
         return `Máximo de ${MAX_ATTACHMENTS} anexos por transação atingido`;
+      }
+
+      // base64 length → approximate byte size
+      const approxBytes = (newAttachment.data.length * 3) / 4;
+      if (approxBytes > MAX_FILE_SIZE) {
+        return 'Arquivo muito grande (máximo 10 MB)';
       }
 
       db.insert(attachments).values(newAttachment).run();

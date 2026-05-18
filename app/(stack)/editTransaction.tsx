@@ -33,6 +33,7 @@ interface EditFormValues {
   description: string;
   date: Date;
   status: TransactionStatusEnum;
+  isSubscription: boolean;
 }
 
 const formSchema = z.object({
@@ -40,6 +41,7 @@ const formSchema = z.object({
   description: z.string().min(1, 'Informe o nome da transação'),
   date: z.date(),
   status: z.enum(TransactionStatusEnum),
+  isSubscription: z.boolean(),
 });
 
 // ─── Tela ─────────────────────────────────────────────────────────────────────
@@ -66,6 +68,8 @@ export default function EditTransactionScreen() {
     transactionGroupId: string;
     preSelectedScope: string;
     currentStatus: string;
+    currentExpenseClassification: string;
+    currentIsSubscription: string;
   }>();
 
   const transactionId  = params.transactionId ?? '';
@@ -109,6 +113,7 @@ export default function EditTransactionScreen() {
       description: params.currentDescription ?? '',
       date:        params.currentDate ? new Date(parseInt(params.currentDate, 10)) : new Date(),
       status:      (params.currentStatus as TransactionStatusEnum) ?? TransactionStatusEnum.Pending,
+      isSubscription: params.currentIsSubscription === 'true',
     } as EditFormValues,
     validators: {
       onChange: formSchema,
@@ -153,12 +158,13 @@ export default function EditTransactionScreen() {
           date:        value.date.getTime(),
           status:      value.status,
           paidAt:      value.status === TransactionStatusEnum.Paid ? Date.now() : null,
+          isSubscription: value.isSubscription,
         });
         return;
       }
 
       // Bulk scope: montar patch apenas com campos alterados
-      const fieldMeta = form.store.state.fieldMeta;
+      const fieldMeta = form.store.state.fieldMeta as Record<string, { isDefaultValue: boolean }>;
       const patch = buildFormPatch(fieldMeta, value as unknown as Record<string, unknown>);
 
       if (Object.keys(patch).length === 0) {
@@ -178,6 +184,7 @@ export default function EditTransactionScreen() {
         data.status = value.status;
         data.paidAt = value.status === TransactionStatusEnum.Paid ? Date.now() : null;
       }
+      if ('isSubscription' in patch) data.isSubscription = value.isSubscription;
 
       if (warnings.length > 0) {
         const fieldList = warnings.join(' e ');
@@ -212,28 +219,28 @@ export default function EditTransactionScreen() {
   return (
     <ScreenWrapper style={{ backgroundColor: colors.background }}>
       {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 16,
-          gap: 12,
-        }}
-      >
+      <View className="relative flex-row items-center justify-between px-4 py-4">
         <ActionButton icon="arrow-left" onPress={() => router.back()} />
-        <Text style={{ flex: 1, color: colors.textPrimary, fontWeight: '700', fontSize: 20 }}>
-          Editar Transação
-        </Text>
         <View
           style={{
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: 999,
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            pointerEvents: 'none',
+          }}>
+          <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
+            Editar Transação
+          </Text>
+        </View>
+        <View
+          className="rounded-full px-3 py-1.5"
+          style={{
             backgroundColor: isIncome ? colors.incomeColor + '20' : colors.expenseColor + '20',
-          }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: '600', color: isIncome ? colors.incomeColor : colors.expenseColor }}>
+          }}>
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: isIncome ? colors.incomeColor : colors.expenseColor }}>
             {isIncome ? 'Receita' : 'Despesa'}
           </Text>
         </View>
@@ -241,8 +248,7 @@ export default function EditTransactionScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 20, paddingBottom: TAB_BAR_HEIGHT, gap: 20 }}
-      >
+        contentContainerStyle={{ padding: 20, paddingBottom: TAB_BAR_HEIGHT, gap: 20 }}>
         {/* Scope — only when hasGroup */}
         {hasGroup && (
           <View
@@ -252,9 +258,14 @@ export default function EditTransactionScreen() {
               padding: 16,
               borderWidth: 1,
               borderColor: colors.borderColor,
-            }}
-          >
-            <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 15, marginBottom: 12 }}>
+            }}>
+            <Text
+              style={{
+                color: colors.textPrimary,
+                fontWeight: '600',
+                fontSize: 15,
+                marginBottom: 12,
+              }}>
               O que deseja editar?
             </Text>
             <View style={{ gap: 8 }}>
@@ -274,8 +285,7 @@ export default function EditTransactionScreen() {
                       borderWidth: 1.5,
                       borderColor: selected ? colors.primaryGold : colors.borderColor,
                       backgroundColor: selected ? colors.primaryGold + '15' : colors.iconBackground,
-                    }}
-                  >
+                    }}>
                     <View
                       style={{
                         width: 22,
@@ -286,9 +296,10 @@ export default function EditTransactionScreen() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: selected ? colors.primaryGold : 'transparent',
-                      }}
-                    >
-                      {selected && <Feather name="check" size={12} color={colors.primaryGoldContrast} />}
+                      }}>
+                      {selected && (
+                        <Feather name="check" size={12} color={colors.primaryGoldContrast} />
+                      )}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 14 }}>
@@ -309,24 +320,24 @@ export default function EditTransactionScreen() {
         <form.Field name="amount">
           {(field) => (
             <View>
-              <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+              <Text className="mb-3 text-base font-semibold" style={{ color: colors.textPrimary }}>
                 Valor
               </Text>
               <View
+                className="flex-row items-center rounded-2xl px-4"
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
                   backgroundColor: colors.cardBackground,
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
                   borderWidth: 1,
-                  borderColor: field.state.meta.errors.length > 0 ? colors.expenseColor : colors.borderColor,
-                }}
-              >
-                <Text style={{ color: colors.textSecondary, fontSize: 18, marginRight: 8 }}>R$</Text>
+                  borderColor:
+                    field.state.meta.errors.length > 0 ? colors.expenseColor : colors.borderColor,
+                  height: 52,
+                }}>
+                <Text className="mr-2 text-base" style={{ color: colors.textSecondary }}>
+                  R$
+                </Text>
                 <TextInput
-                  style={{ flex: 1, color: colors.textPrimary, fontSize: 24, fontWeight: '700' }}
+                  className="flex-1 text-2xl font-bold"
+                  style={{ color: colors.textPrimary }}
                   placeholder="0,00"
                   placeholderTextColor={colors.textSecondary}
                   value={amountDisplay}
@@ -335,7 +346,7 @@ export default function EditTransactionScreen() {
                 />
               </View>
               {field.state.meta.errors[0] && (
-                <Text style={{ color: colors.expenseColor, fontSize: 12, marginTop: 4 }}>
+                <Text className="mt-1 text-xs" style={{ color: colors.expenseColor }}>
                   {String(field.state.meta.errors[0])}
                 </Text>
               )}
@@ -347,21 +358,22 @@ export default function EditTransactionScreen() {
         <form.Field name="description">
           {(field) => (
             <View>
-              <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+              <Text className="mb-3 text-base font-semibold" style={{ color: colors.textPrimary }}>
                 Nome
               </Text>
               <View
+                className="rounded-2xl px-4"
                 style={{
                   backgroundColor: colors.cardBackground,
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
                   borderWidth: 1,
-                  borderColor: field.state.meta.errors.length > 0 ? colors.expenseColor : colors.borderColor,
-                }}
-              >
+                  borderColor:
+                    field.state.meta.errors.length > 0 ? colors.expenseColor : colors.borderColor,
+                  height: 52,
+                  justifyContent: 'center',
+                }}>
                 <TextInput
-                  style={{ color: colors.textPrimary, fontSize: 15 }}
+                  className="text-base"
+                  style={{ color: colors.textPrimary }}
                   placeholder="Nome da transação"
                   placeholderTextColor={colors.textSecondary}
                   value={field.state.value}
@@ -369,7 +381,7 @@ export default function EditTransactionScreen() {
                 />
               </View>
               {field.state.meta.errors[0] && (
-                <Text style={{ color: colors.expenseColor, fontSize: 12, marginTop: 4 }}>
+                <Text className="mt-1 text-xs" style={{ color: colors.expenseColor }}>
                   {String(field.state.meta.errors[0])}
                 </Text>
               )}
@@ -381,13 +393,16 @@ export default function EditTransactionScreen() {
         <form.Field name="date">
           {(field) => (
             <View>
-              <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+              <Text
+                style={{
+                  color: colors.textPrimary,
+                  fontWeight: '600',
+                  fontSize: 15,
+                  marginBottom: 8,
+                }}>
                 Data
               </Text>
-              <DatePicker
-                data={field.state.value}
-                onChangeData={field.handleChange}
-              />
+              <DatePicker data={field.state.value} onChangeData={field.handleChange} />
             </View>
           )}
         </form.Field>
@@ -396,7 +411,13 @@ export default function EditTransactionScreen() {
         <form.Field name="status">
           {(field) => (
             <View>
-              <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+              <Text
+                style={{
+                  color: colors.textPrimary,
+                  fontWeight: '600',
+                  fontSize: 15,
+                  marginBottom: 8,
+                }}>
                 Status
               </Text>
               <View
@@ -407,8 +428,7 @@ export default function EditTransactionScreen() {
                   padding: 4,
                   borderWidth: 1,
                   borderColor: colors.borderColor,
-                }}
-              >
+                }}>
                 <TouchableOpacity
                   style={{
                     flex: 1,
@@ -421,8 +441,7 @@ export default function EditTransactionScreen() {
                         : 'transparent',
                   }}
                   onPress={() => field.handleChange(TransactionStatusEnum.Pending)}
-                  activeOpacity={0.7}
-                >
+                  activeOpacity={0.7}>
                   <Text
                     style={{
                       fontWeight: '600',
@@ -430,8 +449,7 @@ export default function EditTransactionScreen() {
                         field.state.value === TransactionStatusEnum.Pending
                           ? '#fff'
                           : colors.textSecondary,
-                    }}
-                  >
+                    }}>
                     Pendente
                   </Text>
                 </TouchableOpacity>
@@ -447,8 +465,7 @@ export default function EditTransactionScreen() {
                         : 'transparent',
                   }}
                   onPress={() => field.handleChange(TransactionStatusEnum.Paid)}
-                  activeOpacity={0.7}
-                >
+                  activeOpacity={0.7}>
                   <Text
                     style={{
                       fontWeight: '600',
@@ -456,8 +473,7 @@ export default function EditTransactionScreen() {
                         field.state.value === TransactionStatusEnum.Paid
                           ? '#fff'
                           : colors.textSecondary,
-                    }}
-                  >
+                    }}>
                     Pago
                   </Text>
                 </TouchableOpacity>
@@ -465,6 +481,56 @@ export default function EditTransactionScreen() {
             </View>
           )}
         </form.Field>
+
+        {/* Assinatura */}
+        {params.paymentType === 'recurring' && (
+          <form.Field name="isSubscription">
+            {(field) => (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => field.handleChange(!field.state.value)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  borderRadius: 12,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: field.state.value ? colors.primaryGold : colors.borderColor,
+                  backgroundColor: colors.cardBackground,
+                }}>
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 4,
+                    marginRight: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: field.state.value ? colors.primaryGold : 'transparent',
+                    borderWidth: 2,
+                    borderColor: field.state.value ? colors.primaryGold : colors.borderColor,
+                  }}>
+                  {field.state.value && (
+                    <Feather name="check" size={12} color={colors.primaryGoldContrast} />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 14 }}>
+                    É uma assinatura
+                  </Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                    Netflix, Spotify, planos mensais...
+                  </Text>
+                </View>
+                <Feather
+                  name="repeat"
+                  size={16}
+                  color={field.state.value ? colors.primaryGold : colors.textSecondary}
+                />
+              </TouchableOpacity>
+            )}
+          </form.Field>
+        )}
 
         {/* Informações somente-leitura */}
         <View
@@ -475,14 +541,20 @@ export default function EditTransactionScreen() {
             gap: 12,
             borderWidth: 1,
             borderColor: colors.borderColor,
-          }}
-        >
-          <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', letterSpacing: 0.5 }}>
+          }}>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: 12,
+              fontWeight: '600',
+              letterSpacing: 0.5,
+            }}>
             INFORMAÇÕES FIXAS
           </Text>
 
           {/* Categoria */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View
+            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <View
                 style={{
@@ -492,8 +564,7 @@ export default function EditTransactionScreen() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: (params.categoryColor || colors.primaryGold) + '20',
-                }}
-              >
+                }}>
                 <Feather
                   name={(params.categoryIcon || 'tag') as any}
                   size={16}
@@ -509,7 +580,12 @@ export default function EditTransactionScreen() {
 
           {/* Tipo de pagamento */}
           {(isInstallment || isRecurring) && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Feather
                   name={isInstallment ? 'credit-card' : 'repeat'}
@@ -530,7 +606,13 @@ export default function EditTransactionScreen() {
         {/* Anexos existentes */}
         {existingAttachments.filter((a) => !a.isReceipt).length > 0 && (
           <View>
-            <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
+            <Text
+              style={{
+                color: colors.textPrimary,
+                fontWeight: '600',
+                fontSize: 15,
+                marginBottom: 8,
+              }}>
               Anexos existentes
             </Text>
             <View style={{ gap: 8 }}>
@@ -548,8 +630,7 @@ export default function EditTransactionScreen() {
                       padding: 12,
                       borderWidth: 1,
                       borderColor: colors.borderColor,
-                    }}
-                  >
+                    }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
                       <Feather
                         name={att.fileType.startsWith('image/') ? 'image' : 'file-text'}
@@ -557,7 +638,9 @@ export default function EditTransactionScreen() {
                         color={colors.primaryGold}
                       />
                       <View style={{ flex: 1 }}>
-                        <Text style={{ color: colors.textPrimary, fontWeight: '500', fontSize: 14 }} numberOfLines={1}>
+                        <Text
+                          style={{ color: colors.textPrimary, fontWeight: '500', fontSize: 14 }}
+                          numberOfLines={1}>
                           {att.title}
                         </Text>
                         <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
@@ -575,8 +658,7 @@ export default function EditTransactionScreen() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: colors.expenseColor + '20',
-                      }}
-                    >
+                      }}>
                       <Feather name="trash-2" size={14} color={colors.expenseColor} />
                     </TouchableOpacity>
                   </View>
@@ -586,10 +668,16 @@ export default function EditTransactionScreen() {
         )}
 
         {/* Novos anexos */}
-        <View>
-          <Text style={{ color: colors.textPrimary, fontWeight: '600', fontSize: 15, marginBottom: 8 }}>
-            Adicionar Anexos
-          </Text>
+        <Text className="text-base font-semibold" style={{ color: colors.textPrimary }}>
+          Adicionar Anexos
+        </Text>
+        <View
+          className="rounded-2xl p-4"
+          style={{
+            backgroundColor: colors.cardBackground,
+            borderWidth: 1,
+            borderColor: colors.borderColor,
+          }}>
           <AttachmentPicker
             attachments={newAttachments}
             onAttachmentsChange={setNewAttachments}

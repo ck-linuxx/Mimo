@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { transactions } from 'db/schema';
 import { TransactionStatusEnum } from 'types';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 export function useUpdateTransactionStatus() {
   const [loading, setLoading] = useState(false);

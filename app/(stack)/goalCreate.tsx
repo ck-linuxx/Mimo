@@ -13,8 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { financialGoals } from 'db/schema';
 import { consumeSelectionCallback } from 'utils/selectionStore';
@@ -32,8 +31,7 @@ import { DatePicker } from 'components/DatePicker';
 import { GoalStatusEnum } from 'types/financialGoal';
 import type { FinancialGoal } from 'types/financialGoal';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 export default function GoalCreateScreen() {
   const { theme } = useTheme();

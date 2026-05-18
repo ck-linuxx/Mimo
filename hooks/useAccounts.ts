@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { accounts } from 'db/schema';
 import type { Account } from 'types/account';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 interface UseAccountsResult {
   data: Account[];

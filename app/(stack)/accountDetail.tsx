@@ -2,8 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, eq, inArray, lt } from 'drizzle-orm';
 import { accounts, transactions } from 'db/schema';
 import { darkColors, lightColors } from 'themes/colors';
@@ -25,8 +24,6 @@ import type { Account } from 'types';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
 
 const MONTH_NAMES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',

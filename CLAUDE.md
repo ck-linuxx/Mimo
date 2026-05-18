@@ -10,6 +10,19 @@
 
 > **Animações obrigatórias:** Todo componente interativo deve ter animação. Usar `react-native-reanimated` (`withSpring` / `withTiming`) — nunca `Animated` do React Native core. Usar sempre as constantes de spring definidas no arquivo (`SPRING_BOUNCE`, `SPRING_SLIDE`, `SPRING_MODAL`) — nunca passar literais `{ damping, stiffness }` diretamente em `withSpring()`. Ver valores, exemplos e proibições em [components/CLAUDE.md](components/CLAUDE.md).
 
+> **Refetch obrigatório ao retornar para telas com dados dinâmicos:** Toda tela de tab ou listagem que exibe dados mutáveis (contas, cartões, metas, relatórios, transações) **deve** chamar `refetch()` de todos os seus hooks de query no momento em que a tela recebe foco, usando `useFocusEffect` + `useCallback` de `@react-navigation/native`. Isso evita dados stale quando o usuário retorna de telas de criação/edição. Exceção: telas exclusivamente estáticas ou onde nenhuma mutação de dados é possível nos fluxos de navegação que levam a elas.
+>
+> ```tsx
+> import { useFocusEffect } from '@react-navigation/native';
+>
+> useFocusEffect(
+>   useCallback(() => {
+>     refetchA();
+>     refetchB();
+>   }, [refetchA, refetchB]),
+> );
+> ```
+
 ## Convenção
 
 Toda pasta de funcionalidade **deve** conter um `CLAUDE.md` próprio descrevendo:
@@ -30,4 +43,5 @@ Toda pasta de funcionalidade **deve** conter um `CLAUDE.md` próprio descrevendo
 | `hooks/` | [hooks/CLAUDE.md](hooks/CLAUDE.md) | Hooks de query SQLite dedicados por entidade + `useCustomAlert` |
 | `components/` | [components/CLAUDE.md](components/CLAUDE.md) | Componentes React Native com regras de theming via `themes/colors.ts` |
 | `components/charts/` | [components/charts/CLAUDE.md](components/charts/CLAUDE.md) | Gráficos interativos via @wuba/react-native-echarts + react-native-svg (DonutChart) |
+| `components/reports/` | [components/reports/CLAUDE.md](components/reports/CLAUDE.md) | Cards compactos de relatório que agregam chart + seleção + listagem paginada |
 | `app/(stack)/` | [app/(stack)/CLAUDE.md](app/(stack)/CLAUDE.md) | Telas em stack — fluxo dedicado de metas (goalsManage/goalDetail/goalEdit) separado do fluxo de seleção (goalSelect) |

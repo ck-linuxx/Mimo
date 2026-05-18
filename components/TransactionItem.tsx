@@ -96,6 +96,7 @@ export function TransactionItem({
         transactionGroupId: transaction.transactionGroupId ?? '',
         preSelectedScope: scope,
         currentStatus: transaction.status,
+        currentIsSubscription: transaction.isSubscription ? 'true' : 'false',
       },
     });
   };

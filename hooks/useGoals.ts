@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { financialGoals } from 'db/schema';
 import type { FinancialGoal } from 'types/financialGoal';
 import { GoalStatusEnum } from 'types/financialGoal';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 interface UseGoalsResult {
   data: FinancialGoal[];

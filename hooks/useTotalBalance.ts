@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { and, eq } from 'drizzle-orm';
+import { db } from 'db/client';
+import { and, eq, ne } from 'drizzle-orm';
 import { accounts, transactions } from 'db/schema';
 import { TransactionTypeEnum, TransactionStatusEnum } from 'types';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 interface UseTotalBalanceResult {
   balance: number;
@@ -47,7 +45,7 @@ export function useTotalBalance(): UseTotalBalanceResult {
           .where(
             and(
               eq(transactions.accountId, account.id),
-              eq(transactions.status, TransactionStatusEnum.Paid),
+              ne(transactions.status, TransactionStatusEnum.Cancelled),
             ),
           )
           .all();

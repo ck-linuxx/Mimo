@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, eq, gte, lte, ne, sql } from 'drizzle-orm';
 import { transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 export interface CardBillingSummary {
   totalSpent: number;

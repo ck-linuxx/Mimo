@@ -36,6 +36,12 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.clark1104.mimov2"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bfca52db-8b55-40aa-8a2a-2c24521a25ef"
+      }
     }
   }
 }

@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import { ActionButton } from 'components/ActionButton';
 import { Loading } from 'components/Loading';
@@ -67,6 +68,12 @@ export default function TransactionsScreen() {
   const [month, setMonth] = useState(today.getMonth());
 
   const { data, loading, refetch } = useTransactions(year, month);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   const navegarMes = (direcao: 'anterior' | 'proximo') => {
     if (direcao === 'anterior') {

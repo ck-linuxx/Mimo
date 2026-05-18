@@ -109,7 +109,6 @@ export function SmoothLineChart({
         right: 12,
         bottom: LEGEND_BOTTOM_OFFSET,
         left: 56,
-        containLabel: false,
       },
       legend: {
         show: true,
@@ -188,6 +187,8 @@ export function SmoothLineChart({
         width: containerWidth,
         height,
       });
+    } else {
+      chartInstanceRef.current.resize({ width: containerWidth, height });
     }
 
     chartInstanceRef.current.setOption(buildOption(), { notMerge: true });

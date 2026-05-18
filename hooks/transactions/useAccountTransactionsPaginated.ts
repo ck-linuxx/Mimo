@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, desc, eq, gte, inArray, lte, ne, or, sql } from 'drizzle-orm';
 import { categories, transactionGroups, transactions } from 'db/schema';
 import { TransactionStatusEnum } from 'types';
 import type { TransactionWithCategory } from 'types/transactionView';
 
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
+
 
 interface UseAccountTransactionsPaginatedResult {
   data: TransactionWithCategory[];

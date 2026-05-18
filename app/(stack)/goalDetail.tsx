@@ -9,8 +9,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { financialGoals } from 'db/schema';
 import { darkColors, lightColors } from 'themes/colors';
@@ -21,11 +20,6 @@ import { ActionButton } from 'components/ActionButton';
 import { CustomAlert } from 'components/CustomAlert';
 import { GoalStatusEnum } from 'types/financialGoal';
 import type { FinancialGoal } from 'types/financialGoal';
-
-// ─── DB ───────────────────────────────────────────────────────────────────────
-
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

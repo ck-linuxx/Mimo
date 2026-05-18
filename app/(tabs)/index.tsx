@@ -60,7 +60,7 @@ export default function HomeScreen() {
     let receitas = 0;
     let despesas = 0;
     for (const t of monthlyTransactions) {
-      if (t.status !== TransactionStatusEnum.Paid) continue;
+      if (t.status === TransactionStatusEnum.Cancelled) continue;
       if (t.type === TransactionTypeEnum.Income) {
         receitas += t.amount;
       } else {

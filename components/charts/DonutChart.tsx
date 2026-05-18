@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { InteractionManager, View, Text, StyleSheet } from 'react-native';
 import * as echarts from 'echarts/core';
 import { PieChart } from 'echarts/charts';
 import { LegendComponent, TooltipComponent } from 'echarts/components';
@@ -82,6 +82,7 @@ export function DonutChart({
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'item' as const,
+        confine: true,
         backgroundColor: colors.cardBackground,
         borderColor: colors.borderColor,
         borderWidth: 1,
@@ -131,14 +132,20 @@ export function DonutChart({
     if (!chartRef.current || containerWidth === 0) return;
 
     if (!chartInstanceRef.current) {
-      chartInstanceRef.current = echarts.init(chartRef.current, 'light', {
-        renderer: 'svg',
-        width: containerWidth,
-        height,
+      const task = InteractionManager.runAfterInteractions(() => {
+        if (!chartRef.current) return;
+        chartInstanceRef.current = echarts.init(chartRef.current, 'light', {
+          renderer: 'svg',
+          width: containerWidth,
+          height,
+        });
+        chartInstanceRef.current.setOption(buildOption(), { notMerge: true });
       });
+      return () => task.cancel();
     }
 
-    chartInstanceRef.current.setOption(buildOption(), { notMerge: true });
+    chartInstanceRef.current.resize({ width: containerWidth, height });
+    chartInstanceRef.current.setOption(buildOption(), { notMerge: false, lazyUpdate: true });
   }, [buildOption, containerWidth, height]);
 
   // Dispose apenas no unmount — evita que o SvgChart receba eventos
@@ -157,15 +164,16 @@ export function DonutChart({
       style={{ height }}
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
+      {/* SvgChart sempre montado — evita dispose/reinit ao trocar loading/dados */}
       <SvgChart ref={chartRef} />
-      {data.length === 0 && (
-        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
+      {data.length === 0 ? (
+        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: colors.cardBackground }]}>
           <Feather name="pie-chart" size={48} color={colors.textSecondary} />
           <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm text-center">
             {emptyText}
           </Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }

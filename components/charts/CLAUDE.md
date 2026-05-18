@@ -79,6 +79,11 @@ return (
 | `DonutChart` | `DonutChart.tsx` | Gráfico de rosca (donut) para distribuição proporcional de categorias |
 | `SmoothLineChart` | `SmoothLineChart.tsx` | Gráfico de linhas suaves com múltiplas séries (1-N) e legenda obrigatória |
 | `BarChart` | `BarChart.tsx` | Gráfico de barras agrupadas (gastos mensais) com tick-align e paleta interna |
+| `SankeyChart` | `SankeyChart.tsx` | Fluxo de caixa Receitas → Categorias de Despesa (relatórios) |
+| `SunburstChart` | `SunburstChart.tsx` | Composição hierárquica de gastos: nível 1 = classificação, nível 2 = categoria. Suporta `onNodeClick` para drill-down |
+| `BudgetGaugeChart` | `BudgetGaugeChart.tsx` | Gauge de saúde do orçamento mensal (despesas / receita × 100%) |
+| `NetWorthAreaForecastChart` | `NetWorthAreaForecastChart.tsx` | Área empilhada com histórico de patrimônio + linha pontilhada de previsão |
+| `CalendarHeatmapChart` | `CalendarHeatmapChart.tsx` | Heatmap no formato de calendário mensal com `onDayClick` para drill-down |
 
 ### `BarChart` — Detalhes de uso
 

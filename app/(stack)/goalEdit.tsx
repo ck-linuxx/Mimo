@@ -14,8 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { db } from 'db/client';
 import { and, eq, ne } from 'drizzle-orm';
 import { financialGoals } from 'db/schema';
 import { CATEGORY_ICONS, PRESET_COLORS } from 'utils/categoryConstants';
@@ -35,10 +34,6 @@ import type { FinancialGoal } from 'types/financialGoal';
 
 const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
 
-// ─── DB ───────────────────────────────────────────────────────────────────────
-
-const expo = SQLite.openDatabaseSync('db.db');
-const db = drizzle(expo);
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 

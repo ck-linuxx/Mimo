@@ -1,4 +1,4 @@
-import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { generateId } from 'utils/generateId';
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -109,9 +109,14 @@ export const transactions = sqliteTable('transactions', {
   transactionGroupId: text('transaction_group_id').references(() => transactionGroups.id),
   installmentNumber: integer('installment_number'),
   notes: text('notes'),
+  isSubscription: integer('is_subscription', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
-});
+}, (table) => ({
+  dateIdx: index('transactions_date_idx').on(table.date),
+  categoryIdx: index('transactions_category_idx').on(table.categoryId),
+  statusIdx: index('transactions_status_idx').on(table.status),
+}));
 
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
