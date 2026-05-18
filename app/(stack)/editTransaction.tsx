@@ -355,14 +355,7 @@ export default function EditTransactionScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: TAB_BAR_HEIGHT, gap: 20 }}>
         {/* Scope — only when hasGroup */}
         {hasGroup && (
-          <View
-            style={{
-              backgroundColor: colors.cardBackground,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: colors.borderColor,
-            }}>
+          <View>
             <Text
               style={{
                 color: colors.textPrimary,
@@ -747,9 +740,6 @@ export default function EditTransactionScreen() {
                     </View>
                     {/* Botões: menu + excluir */}
                     <View className="flex-row items-center gap-2">
-                      <View className="w-8 h-8 rounded-full items-center justify-center bg-light-primary-gold/20 dark:bg-dark-primary-gold/20">
-                        <Feather name="more-vertical" size={14} color={colors.primaryGold} />
-                      </View>
                       <TouchableOpacity
                         onPress={() => deleteAttachment(att.id)}
                         activeOpacity={0.7}
@@ -757,6 +747,9 @@ export default function EditTransactionScreen() {
                         className="w-8 h-8 rounded-lg items-center justify-center bg-light-expense-color/20 dark:bg-dark-expense-color/20">
                         <Feather name="trash-2" size={14} color={colors.expenseColor} />
                       </TouchableOpacity>
+                      <View className="w-8 h-8 rounded-full items-center justify-center bg-light-primary-gold/20 dark:bg-dark-primary-gold/20">
+                        <Feather name="more-vertical" size={14} color={colors.primaryGold} />
+                      </View>
                     </View>
                   </TouchableOpacity>
                 ))}
