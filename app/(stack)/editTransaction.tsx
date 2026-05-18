@@ -1,11 +1,23 @@
 import React, { useCallback, useState } from 'react';
 import {
+  Image,
+  Modal,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm } from '@tanstack/react-form';
@@ -13,6 +25,7 @@ import { z } from 'zod';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import { ActionButton } from 'components/ActionButton';
 import { AppButton } from 'components/AppButton';
+import { AttachmentViewer } from 'components/AttachmentViewer';
 import { DatePicker } from 'components/DatePicker';
 import { AttachmentPicker } from 'components/AttachmentPicker';
 import { CustomAlert } from 'components/CustomAlert';
@@ -22,9 +35,12 @@ import { useCustomAlert } from 'hooks/useCustomAlert';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { TransactionStatusEnum, TransactionTypeEnum, GroupTypeEnum } from 'types';
-import type { EditScope, AttachmentLocal } from 'types';
+import type { Attachment, EditScope, AttachmentLocal } from 'types';
 import { FREQUENCY_OPTIONS } from 'utils/transactionLabels';
 import { buildFormPatch } from 'utils/buildFormPatch';
+
+// ─── Animation constants ──────────────────────────────────────────────────────
+const SPRING_MODAL = { damping: 55, stiffness: 700 } as const;
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
 
@@ -215,6 +231,94 @@ export default function EditTransactionScreen() {
   );
 
   const isIncome = params.currentType === TransactionTypeEnum.Income;
+
+  // ─── Viewer & action sheet ────────────────────────────────────────────────────
+  const [viewerAttachment, setViewerAttachment] = useState<Attachment | null>(null);
+  const [actionSheetAttachment, setActionSheetAttachment] = useState<Attachment | null>(null);
+
+  const sheetTranslateY = useSharedValue(300);
+  const overlayOpacity = useSharedValue(0);
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: sheetTranslateY.value }],
+  }));
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  const openActionSheet = (att: Attachment) => {
+    setActionSheetAttachment(att);
+    sheetTranslateY.value = withSpring(0, SPRING_MODAL);
+    overlayOpacity.value = withTiming(1, { duration: 180 });
+  };
+
+  const closeActionSheet = () => {
+    sheetTranslateY.value = withTiming(300, { duration: 150 });
+    overlayOpacity.value = withTiming(0, { duration: 150 }, (finished) => {
+      if (finished) runOnJS(setActionSheetAttachment)(null);
+    });
+  };
+
+  const getAttachmentTempUri = async (att: Attachment): Promise<string> => {
+    const isImg = att.fileType.startsWith('image/');
+    const ext = isImg ? (att.fileType.split('/')[1] ?? 'jpg') : 'pdf';
+    const fileUri = `${FileSystem.cacheDirectory}anexo_${Date.now()}.${ext}`;
+    await FileSystem.writeAsStringAsync(fileUri, att.data, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return fileUri;
+  };
+
+  const handleActionView = () => {
+    const att = actionSheetAttachment;
+    closeActionSheet();
+    if (att) setTimeout(() => setViewerAttachment(att), 160);
+  };
+
+  const handleActionDownload = async () => {
+    const att = actionSheetAttachment;
+    if (!att) return;
+    closeActionSheet();
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        showError('Permissão negada', 'Permissão de armazenamento necessária para baixar.');
+        return;
+      }
+      const fileUri = await getAttachmentTempUri(att);
+      if (att.fileType.startsWith('image/')) {
+        await MediaLibrary.saveToLibraryAsync(fileUri);
+        showSuccess('Download concluído', 'Imagem salva na galeria!', 2500);
+      } else {
+        const destUri = `${FileSystem.documentDirectory}${att.originalName}`;
+        await FileSystem.copyAsync({ from: fileUri, to: destUri });
+        showSuccess('Download concluído', 'PDF salvo no dispositivo!', 2500);
+      }
+    } catch {
+      showError('Erro ao baixar', 'Não foi possível salvar o arquivo.');
+    }
+  };
+
+  const handleActionShare = async () => {
+    const att = actionSheetAttachment;
+    if (!att) return;
+    closeActionSheet();
+    try {
+      const available = await Sharing.isAvailableAsync();
+      if (!available) {
+        showError('Indisponível', 'Compartilhamento não disponível neste dispositivo.');
+        return;
+      }
+      const fileUri = await getAttachmentTempUri(att);
+      await Sharing.shareAsync(fileUri, {
+        mimeType: att.fileType,
+        dialogTitle: 'Compartilhar Anexo',
+      });
+    } catch {
+      showError('Erro ao compartilhar', 'Não foi possível compartilhar o arquivo.');
+    }
+  };
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.background }}>
@@ -606,62 +710,55 @@ export default function EditTransactionScreen() {
         {/* Anexos existentes */}
         {existingAttachments.filter((a) => !a.isReceipt).length > 0 && (
           <View>
-            <Text
-              style={{
-                color: colors.textPrimary,
-                fontWeight: '600',
-                fontSize: 15,
-                marginBottom: 8,
-              }}>
+            <Text className="text-light-text-primary dark:text-dark-text-primary font-semibold text-[15px] mb-2">
               Anexos existentes
             </Text>
-            <View style={{ gap: 8 }}>
+            <View className="gap-2">
               {existingAttachments
                 .filter((a) => !a.isReceipt)
                 .map((att) => (
-                  <View
+                  <TouchableOpacity
                     key={att.id}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: colors.cardBackground,
-                      borderRadius: 12,
-                      padding: 12,
-                      borderWidth: 1,
-                      borderColor: colors.borderColor,
-                    }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                      <Feather
-                        name={att.fileType.startsWith('image/') ? 'image' : 'file-text'}
-                        size={18}
-                        color={colors.primaryGold}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{ color: colors.textPrimary, fontWeight: '500', fontSize: 14 }}
-                          numberOfLines={1}>
-                          {att.title}
-                        </Text>
-                        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                          {(att.fileSize / 1024).toFixed(0)} KB
-                        </Text>
-                      </View>
+                    onPress={() => openActionSheet(att)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center bg-light-card-background dark:bg-dark-card-background rounded-xl p-3 border border-light-border-color dark:border-dark-border-color gap-3">
+                    {/* Miniatura */}
+                    <View className="w-14 h-14 rounded-[10px] overflow-hidden bg-light-icon-background dark:bg-dark-icon-background items-center justify-center">
+                      {att.fileType.startsWith('image/') ? (
+                        <Image
+                          source={{ uri: `data:${att.fileType};base64,${att.data}` }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Feather name="file-text" size={24} color={colors.primaryGold} />
+                      )}
                     </View>
-                    <TouchableOpacity
-                      onPress={() => deleteAttachment(att.id)}
-                      activeOpacity={0.7}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 8,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: colors.expenseColor + '20',
-                      }}>
-                      <Feather name="trash-2" size={14} color={colors.expenseColor} />
-                    </TouchableOpacity>
-                  </View>
+                    {/* Info */}
+                    <View className="flex-1">
+                      <Text
+                        className="text-light-text-primary dark:text-dark-text-primary font-medium text-sm"
+                        numberOfLines={1}>
+                        {att.title}
+                      </Text>
+                      <Text className="text-light-text-secondary dark:text-dark-text-secondary text-xs mt-0.5">
+                        {(att.fileSize / 1024).toFixed(0)} KB
+                      </Text>
+                    </View>
+                    {/* Botões: menu + excluir */}
+                    <View className="flex-row items-center gap-2">
+                      <View className="w-8 h-8 rounded-full items-center justify-center bg-light-primary-gold/20 dark:bg-dark-primary-gold/20">
+                        <Feather name="more-vertical" size={14} color={colors.primaryGold} />
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => deleteAttachment(att.id)}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        className="w-8 h-8 rounded-lg items-center justify-center bg-light-expense-color/20 dark:bg-dark-expense-color/20">
+                        <Feather name="trash-2" size={14} color={colors.expenseColor} />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
                 ))}
             </View>
           </View>
@@ -707,6 +804,108 @@ export default function EditTransactionScreen() {
           autoClose={alertConfig.autoClose}
         />
       )}
+
+      {/* Visualizador de anexo */}
+      {viewerAttachment && (
+        <AttachmentViewer
+          attachment={viewerAttachment}
+          visible
+          onClose={() => setViewerAttachment(null)}
+        />
+      )}
+
+      {/* Action sheet de anexo */}
+      <Modal
+        visible={actionSheetAttachment !== null}
+        transparent
+        animationType="none"
+        onRequestClose={closeActionSheet}
+        statusBarTranslucent>
+        <View className="flex-1 justify-end">
+          <Animated.View
+            className="absolute inset-0"
+            style={[{ backgroundColor: 'rgba(0,0,0,0.5)' }, overlayStyle]}>
+            <TouchableOpacity className="flex-1" activeOpacity={1} onPress={closeActionSheet} />
+          </Animated.View>
+          <Animated.View
+            className="bg-light-card-background dark:bg-dark-card-background rounded-t-3xl p-6 pb-10"
+            style={sheetStyle}>
+            {/* Cabeçalho: info do arquivo */}
+            <View className="flex-row items-center gap-3 mb-5">
+              <View className="w-12 h-12 rounded-[10px] overflow-hidden bg-light-icon-background dark:bg-dark-icon-background items-center justify-center">
+                {actionSheetAttachment?.fileType.startsWith('image/') ? (
+                  <Image
+                    source={{
+                      uri: `data:${actionSheetAttachment.fileType};base64,${actionSheetAttachment.data}`,
+                    }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Feather name="file-text" size={22} color={colors.primaryGold} />
+                )}
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-light-text-primary dark:text-dark-text-primary font-semibold text-[15px]"
+                  numberOfLines={1}>
+                  {actionSheetAttachment?.title}
+                </Text>
+                <Text className="text-light-text-secondary dark:text-dark-text-secondary text-xs mt-0.5">
+                  {actionSheetAttachment
+                    ? `${(actionSheetAttachment.fileSize / 1024).toFixed(0)} KB`
+                    : ''}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={closeActionSheet}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Feather name="x" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {/* Ações */}
+            <View className="gap-2">
+              {/* Visualizar */}
+              <TouchableOpacity
+                onPress={handleActionView}
+                activeOpacity={0.7}
+                className="flex-row items-center gap-3.5 p-4 rounded-xl bg-light-icon-background dark:bg-dark-icon-background">
+                <View className="w-10 h-10 rounded-[10px] items-center justify-center bg-light-primary-gold/20 dark:bg-dark-primary-gold/20">
+                  <Feather name="eye" size={18} color={colors.primaryGold} />
+                </View>
+                <Text className="text-light-text-primary dark:text-dark-text-primary font-semibold text-[15px]">
+                  Visualizar
+                </Text>
+              </TouchableOpacity>
+              {/* Baixar */}
+              <TouchableOpacity
+                onPress={handleActionDownload}
+                activeOpacity={0.7}
+                className="flex-row items-center gap-3.5 p-4 rounded-xl bg-light-icon-background dark:bg-dark-icon-background">
+                <View className="w-10 h-10 rounded-[10px] items-center justify-center bg-light-income-color/20 dark:bg-dark-income-color/20">
+                  <Feather name="download" size={18} color={colors.incomeColor} />
+                </View>
+                <Text className="text-light-text-primary dark:text-dark-text-primary font-semibold text-[15px]">
+                  Baixar
+                </Text>
+              </TouchableOpacity>
+              {/* Compartilhar */}
+              <TouchableOpacity
+                onPress={handleActionShare}
+                activeOpacity={0.7}
+                className="flex-row items-center gap-3.5 p-4 rounded-xl bg-light-icon-background dark:bg-dark-icon-background">
+                <View className="w-10 h-10 rounded-[10px] items-center justify-center bg-light-primary-gold/20 dark:bg-dark-primary-gold/20">
+                  <Feather name="share-2" size={18} color={colors.primaryGold} />
+                </View>
+                <Text className="text-light-text-primary dark:text-dark-text-primary font-semibold text-[15px]">
+                  Compartilhar
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
     </ScreenWrapper>
   );
 }
