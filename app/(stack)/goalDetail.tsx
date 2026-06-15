@@ -17,9 +17,11 @@ import { useTheme } from 'themes';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { ScreenWrapper } from 'components/ScreenWrapper';
 import { ActionButton } from 'components/ActionButton';
+import { StatCard } from 'components/StatCard';
 import { CustomAlert } from 'components/CustomAlert';
 import { GoalStatusEnum } from 'types/financialGoal';
 import type { FinancialGoal } from 'types/financialGoal';
+import { calcMonthlyInstallment, calcMonthsRange } from 'utils/goalCalculationsUtils';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -31,41 +33,7 @@ function formatBRL(value: number): string {
 }
 
 function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-// ─── InfoRow ──────────────────────────────────────────────────────────────────
-
-function InfoRow({
-  label,
-  value,
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  valueColor?: string;
-}) {
-  const { theme } = useTheme();
-  const colors = theme === 'dark' ? darkColors : lightColors;
-
-  return (
-    <View
-      className="flex-row items-center justify-between py-3"
-      style={{ borderBottomWidth: 1, borderBottomColor: colors.borderColor }}>
-      <Text className="text-sm" style={{ color: colors.textSecondary }}>
-        {label}
-      </Text>
-      <Text
-        className="text-sm font-semibold"
-        style={{ color: valueColor ?? colors.textPrimary }}>
-        {value}
-      </Text>
-    </View>
-  );
+  return new Date(timestamp).toLocaleDateString('pt-BR');
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -200,20 +168,23 @@ export default function GoalDetailScreen() {
   const progressBarColor = isCompleted ? colors.incomeColor : accentColor;
 
   const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
+  const monthlyInstallment = isActive && goal.startAt && goal.finishAt
+    ? calcMonthlyInstallment(goal.targetAmount, goal.currentAmount, new Date(goal.startAt), new Date(goal.finishAt))
+    : null;
+  const months = monthlyInstallment !== null
+    ? calcMonthsRange(new Date(goal.startAt!), new Date(goal.finishAt!))
+    : 0;
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.background }}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
+      <View className="flex-row items-center justify-between px-5 pb-4 pt-2">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />
         <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
           Detalhes da Meta
         </Text>
         {isActive ? (
-          <ActionButton
-            icon="edit-2"
-            onPress={() => router.push(`/goalEdit?id=${goal.id}`)}
-          />
+          <ActionButton icon="edit-2" onPress={() => router.push(`/goalEdit?id=${goal.id}`)} />
         ) : (
           <View className="w-10" />
         )}
@@ -222,13 +193,12 @@ export default function GoalDetailScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 }}>
-
         {/* Hero card */}
         <View
-          className="rounded-3xl p-6 mb-4 items-center"
+          className="mb-4 items-center rounded-3xl p-6"
           style={{ backgroundColor: accentColor + '15' }}>
           <View
-            className="w-20 h-20 rounded-2xl items-center justify-center mb-4"
+            className="mb-4 h-20 w-20 items-center justify-center rounded-2xl"
             style={{ backgroundColor: accentColor + '25' }}>
             <Feather
               name={(goal.icon as React.ComponentProps<typeof Feather>['name']) ?? 'target'}
@@ -238,40 +208,65 @@ export default function GoalDetailScreen() {
           </View>
 
           <Text
-            className="text-2xl font-bold text-center mb-1"
+            className="mb-1 text-center text-2xl font-bold"
             style={{ color: colors.textPrimary }}>
             {goal.title}
           </Text>
 
           {goal.description ? (
-            <Text
-              className="text-sm text-center mb-3"
-              style={{ color: colors.textSecondary }}>
+            <Text className="mb-3 text-center text-sm" style={{ color: colors.textSecondary }}>
               {goal.description}
             </Text>
           ) : null}
 
           {/* Status badge */}
-          <View
-            className="px-3 py-1 rounded-full"
-            style={{ backgroundColor: statusColor + '20' }}>
+          <View className="rounded-full px-3 py-1" style={{ backgroundColor: statusColor + '20' }}>
             <Text className="text-xs font-semibold" style={{ color: statusColor }}>
               {statusLabel}
             </Text>
           </View>
         </View>
 
+        {monthlyInstallment !== null ? (
+          <View
+            className="mb-4 flex-row items-center gap-3 rounded-2xl px-4 py-3"
+            style={{ backgroundColor: colors.cardBackground }}>
+            <View
+              className="h-10 w-10 items-center justify-center rounded-md"
+              style={{ backgroundColor: colors.primaryGold + '20' }}>
+              <Feather name="trending-up" size={20} color={colors.primaryGold} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm" style={{ color: colors.textSecondary }}>
+                Para atingir sua meta em {months} {months === 1 ? 'mês' : 'meses'}
+              </Text>
+              <Text className="text-base font-bold" style={{ color: colors.textPrimary }}>
+                Guarde R${' '}
+                {monthlyInstallment.toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{' '}
+                / mês
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
         {/* Progresso */}
         <View
-          className="rounded-2xl p-4 mb-4"
-          style={{ borderWidth: 1, borderColor: colors.borderColor, backgroundColor: colors.cardBackground }}>
-          <Text className="text-base font-bold mb-3" style={{ color: colors.textPrimary }}>
+          className="mb-4 rounded-2xl p-4"
+          style={{
+            borderWidth: 1,
+            borderColor: colors.borderColor,
+            backgroundColor: colors.cardBackground,
+          }}>
+          <Text className="mb-3 text-base font-bold" style={{ color: colors.textPrimary }}>
             Progresso
           </Text>
 
           {/* Barra */}
           <View
-            className="rounded-full overflow-hidden mb-2"
+            className="mb-2 overflow-hidden rounded-full"
             style={{ height: 10, backgroundColor: colors.iconBackground }}>
             <View
               style={{
@@ -284,71 +279,60 @@ export default function GoalDetailScreen() {
           </View>
 
           {/* Percentual */}
-          <Text
-            className="text-2xl font-bold text-center mb-4"
-            style={{ color: progressBarColor }}>
+          <Text className="mb-4 text-center text-2xl font-bold" style={{ color: progressBarColor }}>
             {progressPct}%
           </Text>
 
           {/* Valores em linha */}
           <View className="flex-row gap-3">
-            <View
-              className="flex-1 rounded-xl p-3 items-center"
-              style={{ backgroundColor: colors.iconBackground }}>
-              <Text className="text-xs mb-1" style={{ color: colors.textSecondary }}>
-                Acumulado
-              </Text>
-              <Text className="text-base font-bold" style={{ color: colors.incomeColor }}>
-                R$ {formatBRL(goal.currentAmount)}
-              </Text>
-            </View>
-            <View
-              className="flex-1 rounded-xl p-3 items-center"
-              style={{ backgroundColor: colors.iconBackground }}>
-              <Text className="text-xs mb-1" style={{ color: colors.textSecondary }}>
-                Meta
-              </Text>
-              <Text className="text-base font-bold" style={{ color: colors.textPrimary }}>
-                R$ {formatBRL(goal.targetAmount)}
-              </Text>
-            </View>
+            <StatCard
+              label="Acumulado"
+              value={`R$ ${formatBRL(goal.currentAmount)}`}
+              valueColor={colors.incomeColor}
+            />
+            <StatCard label="Meta" value={`R$ ${formatBRL(goal.targetAmount)}`} />
             {!isCompleted && (
-              <View
-                className="flex-1 rounded-xl p-3 items-center"
-                style={{ backgroundColor: colors.iconBackground }}>
-                <Text className="text-xs mb-1" style={{ color: colors.textSecondary }}>
-                  Faltam
-                </Text>
-                <Text className="text-base font-bold" style={{ color: colors.expenseColor }}>
-                  R$ {formatBRL(remaining)}
-                </Text>
-              </View>
+              <StatCard
+                label="Faltam"
+                value={`R$ ${formatBRL(remaining)}`}
+                valueColor={colors.expenseColor}
+              />
             )}
           </View>
         </View>
 
         {/* Detalhes */}
         <View
-          className="rounded-2xl px-4 mb-4"
-          style={{ borderWidth: 1, borderColor: colors.borderColor, backgroundColor: colors.cardBackground }}>
-          <Text className="text-base font-bold pt-4 pb-2" style={{ color: colors.textPrimary }}>
+          className="mb-4 rounded-2xl p-4"
+          style={{
+            borderWidth: 1,
+            borderColor: colors.borderColor,
+            backgroundColor: colors.cardBackground,
+          }}>
+          <Text className="mb-3 text-base font-bold" style={{ color: colors.textPrimary }}>
             Detalhes
           </Text>
-          {goal.deadline ? (
-            <InfoRow label="Prazo" value={formatDate(goal.deadline)} />
-          ) : (
-            <InfoRow label="Prazo" value="Sem prazo definido" />
-          )}
-          <InfoRow label="Status" value={statusLabel} valueColor={statusColor} />
-          <InfoRow label="Criada em" value={formatDate(goal.createdAt)} />
-          <View style={{ height: 4 }} />
+          <View className="flex-row gap-3 mb-3">
+            <StatCard
+              label="Início"
+              value={goal.startAt ? formatDate(goal.startAt) : 'Não definido'}
+            />
+            <StatCard
+              label="Término"
+              value={goal.finishAt ? formatDate(goal.finishAt) : 'Não definido'}
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <StatCard label="Status" value={statusLabel} valueColor={statusColor} />
+            <StatCard label="Criada em" value={formatDate(goal.createdAt)} />
+          </View>
         </View>
 
         {/* Ações */}
         {isActive && (
           <View className="gap-3">
             <TouchableOpacity
-              className="rounded-2xl p-4 flex-row items-center justify-center gap-2"
+              className="flex-row items-center justify-center gap-2 rounded-2xl p-4"
               style={{ backgroundColor: colors.incomeColor }}
               onPress={handleComplete}
               activeOpacity={0.8}>
@@ -359,7 +343,7 @@ export default function GoalDetailScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="rounded-2xl p-4 flex-row items-center justify-center gap-2"
+              className="flex-row items-center justify-center gap-2 rounded-2xl p-4"
               style={{
                 borderWidth: 1.5,
                 borderColor: colors.expenseColor,
@@ -377,8 +361,12 @@ export default function GoalDetailScreen() {
 
         {isCancelled && (
           <View
-            className="rounded-2xl p-4 flex-row items-center gap-3"
-            style={{ backgroundColor: colors.expenseColor + '12', borderWidth: 1, borderColor: colors.expenseColor + '30' }}>
+            className="flex-row items-center gap-3 rounded-2xl p-4"
+            style={{
+              backgroundColor: colors.expenseColor + '12',
+              borderWidth: 1,
+              borderColor: colors.expenseColor + '30',
+            }}>
             <Feather name="info" size={18} color={colors.expenseColor} />
             <Text className="flex-1 text-sm" style={{ color: colors.expenseColor }}>
               Esta meta foi cancelada e não pode ser reativada.

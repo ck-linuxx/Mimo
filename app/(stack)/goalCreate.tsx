@@ -1,16 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import {
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { db } from 'db/client';
@@ -19,6 +8,7 @@ import { financialGoals } from 'db/schema';
 import { consumeSelectionCallback } from 'utils/selectionStore';
 import { generateId } from 'utils/generateId';
 import { CATEGORY_ICONS, PRESET_COLORS } from 'utils/categoryConstants';
+import { calcMonthlyInstallment, calcMonthsRange } from 'utils/goalCalculationsUtils';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { useCustomAlert } from 'hooks/useCustomAlert';
@@ -27,11 +17,17 @@ import { ScreenWrapper } from 'components/ScreenWrapper';
 import { AppButton } from 'components/AppButton';
 import { ActionButton } from 'components/ActionButton';
 import { IconPickerGrid, ColorPickerCarousel } from 'components/IconPickerGrid';
-import { DatePicker } from 'components/DatePicker';
+import { DatePickerModal } from 'components/DatePickerModal';
 import { GoalStatusEnum } from 'types/financialGoal';
 import type { FinancialGoal } from 'types/financialGoal';
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function formatDateShort(d: Date): string {
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function GoalCreateScreen() {
   const { theme } = useTheme();
@@ -43,17 +39,13 @@ export default function GoalCreateScreen() {
   const [description, setDescription] = useState('');
   const [targetAmountDisplay, setTargetAmountDisplay] = useState('');
   const [targetAmount, setTargetAmount] = useState(0);
-  const [hasDeadline, setHasDeadline] = useState(false);
-  const [deadline, setDeadline] = useState<Date>(new Date());
+  const [startAt, setStartAt] = useState<Date>(new Date());
+  const [finishAt, setFinishAt] = useState<Date>(new Date());
+  const [startAtModalOpen, setStartAtModalOpen] = useState(false);
+  const [finishAtModalOpen, setFinishAtModalOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(PRESET_COLORS[0]);
   const [selectedIcon, setSelectedIcon] = useState<string>(CATEGORY_ICONS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Animação do botão de prazo
-  const deadlineScale = useSharedValue(1);
-  const deadlineAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: deadlineScale.value }],
-  }));
 
   const handleAmountChange = useCallback((text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -82,7 +74,11 @@ export default function GoalCreateScreen() {
       return;
     }
 
-    // Verifica duplicata (case-insensitive)
+    if (finishAt <= startAt) {
+      showError('Datas inválidas', 'A data de Término deve ser posterior à data de Início.');
+      return;
+    }
+
     const existing = db
       .select({ id: financialGoals.id })
       .from(financialGoals)
@@ -110,7 +106,8 @@ export default function GoalCreateScreen() {
         color: selectedColor,
         targetAmount,
         currentAmount: 0,
-        deadline: hasDeadline ? deadline.getTime() : null,
+        startAt: startAt.getTime(),
+        finishAt: finishAt.getTime(),
         status: GoalStatusEnum.Active,
         createdAt: now,
         updatedAt: now,
@@ -124,7 +121,8 @@ export default function GoalCreateScreen() {
         color: selectedColor,
         targetAmount,
         currentAmount: 0,
-        deadline: hasDeadline ? deadline.getTime() : null,
+        startAt: startAt.getTime(),
+        finishAt: finishAt.getTime(),
         status: GoalStatusEnum.Active,
         createdAt: now,
         updatedAt: now,
@@ -141,7 +139,10 @@ export default function GoalCreateScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [title, description, targetAmount, selectedColor, selectedIcon, hasDeadline, deadline, router, showSuccess, showError]);
+  }, [title, description, targetAmount, startAt, finishAt, selectedColor, selectedIcon, router, showSuccess, showError]);
+
+  const monthlyInstallment = calcMonthlyInstallment(targetAmount, 0, startAt, finishAt);
+  const months = monthlyInstallment !== null ? calcMonthsRange(startAt, finishAt) : 0;
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.background }}>
@@ -268,54 +269,80 @@ export default function GoalCreateScreen() {
           </View>
         </View>
 
-        {/* Prazo */}
-        <View className="mb-6">
+        {/* Período */}
+        <View className="mb-3">
           <Text className="mb-3 text-base font-semibold" style={{ color: colors.textPrimary }}>
-            Prazo{' '}
-            <Text style={{ color: colors.textSecondary, fontWeight: '400' }}>(opcional)</Text>
+            Período
           </Text>
-          <TouchableOpacity
-            className="flex-row items-center justify-between rounded-2xl px-4"
-            style={{
-              backgroundColor: colors.cardBackground,
-              borderWidth: 1,
-              borderColor: hasDeadline ? colors.primaryGold : colors.borderColor,
-              height: 52,
-            }}
-            activeOpacity={0.7}
-            onPress={() => {
-              deadlineScale.value = withSpring(0.95, { damping: 6, stiffness: 400, mass: 0.6 });
-              setTimeout(() => {
-                deadlineScale.value = withSpring(1, { damping: 8, stiffness: 400 });
-              }, 100);
-              setHasDeadline((v) => !v);
-            }}>
-            <Text
-              className="text-base"
-              style={{ color: hasDeadline ? colors.textPrimary : colors.textSecondary }}>
-              {hasDeadline
-                ? deadline.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-                : 'Sem prazo definido'}
-            </Text>
-            <Animated.View style={deadlineAnimStyle}>
-              <Feather
-                name={hasDeadline ? 'calendar' : 'plus-circle'}
-                size={18}
-                color={hasDeadline ? colors.primaryGold : colors.textSecondary}
-              />
-            </Animated.View>
-          </TouchableOpacity>
+          <View className="flex-row gap-3">
+            {/* Início */}
+            <TouchableOpacity
+              className="flex-1 flex-row items-center gap-2 rounded-2xl px-3"
+              style={{
+                backgroundColor: colors.cardBackground,
+                borderWidth: 1,
+                borderColor: colors.primaryGold,
+                height: 52,
+              }}
+              activeOpacity={0.7}
+              onPress={() => setStartAtModalOpen(true)}>
+              <Feather name="calendar" size={16} color={colors.primaryGold} />
+              <View>
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                  Início
+                </Text>
+                <Text className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
+                  {formatDateShort(startAt)}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-          {hasDeadline && (
-            <View className="mt-3">
-              <DatePicker
-                data={deadline}
-                onChangeData={setDeadline}
-                label="Data limite"
-              />
-            </View>
-          )}
+            {/* Término */}
+            <TouchableOpacity
+              className="flex-1 flex-row items-center gap-2 rounded-2xl px-3"
+              style={{
+                backgroundColor: colors.cardBackground,
+                borderWidth: 1,
+                borderColor: colors.primaryGold,
+                height: 52,
+              }}
+              activeOpacity={0.7}
+              onPress={() => setFinishAtModalOpen(true)}>
+              <Feather name="calendar" size={16} color={colors.primaryGold} />
+              <View>
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                  Término
+                </Text>
+                <Text className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
+                  {formatDateShort(finishAt)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* Card de parcela mensal */}
+        {monthlyInstallment !== null && (
+          <View
+            className="flex-row items-center gap-3 rounded-2xl px-4 py-3 mb-6"
+            style={{ backgroundColor: colors.iconBackground }}>
+            <Feather name="trending-up" size={20} color={colors.primaryGold} />
+            <View className="flex-1">
+              <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                Para atingir sua meta em {months} {months === 1 ? 'mês' : 'meses'}
+              </Text>
+              <Text className="text-base font-bold" style={{ color: colors.textPrimary }}>
+                Guarde R${' '}
+                {monthlyInstallment.toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{' '}
+                / mês
+              </Text>
+            </View>
+          </View>
+        )}
+        {monthlyInstallment === null && <View className="mb-6" />}
 
         {/* Cor */}
         <View className="mb-6">
@@ -350,6 +377,20 @@ export default function GoalCreateScreen() {
           onPress={handleCreate}
         />
       </ScrollView>
+
+      <DatePickerModal
+        visible={startAtModalOpen}
+        data={startAt}
+        onSelectDate={(d) => { setStartAt(d); setStartAtModalOpen(false); }}
+        onClose={() => setStartAtModalOpen(false)}
+      />
+      <DatePickerModal
+        visible={finishAtModalOpen}
+        data={finishAt}
+        onSelectDate={(d) => { setFinishAt(d); setFinishAtModalOpen(false); }}
+        onClose={() => setFinishAtModalOpen(false)}
+      />
+
       <CustomAlert
         visible={visible}
         type={alertConfig?.type}

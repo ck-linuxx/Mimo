@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { db } from 'db/client';
 import { and, eq, gte } from 'drizzle-orm';
-import { transactions } from 'db/schema';
+import { transactions, financialGoals } from 'db/schema';
 import { TransactionStatusEnum } from 'types';
 import type { FrequencyEnum, EditScope } from 'types';
 
@@ -43,10 +43,37 @@ export function useEditTransaction() {
       const payload = { ...data, updatedAt };
 
       if (scope === 'only_this' || !transactionGroupId) {
-        db.update(transactions)
-          .set(payload)
-          .where(eq(transactions.id, transactionId))
-          .run();
+        const existing = data.status
+          ? db
+              .select({ goalId: transactions.goalId, amount: transactions.amount, status: transactions.status })
+              .from(transactions)
+              .where(eq(transactions.id, transactionId))
+              .get()
+          : null;
+
+        db.transaction((dbTx) => {
+          dbTx.update(transactions).set(payload).where(eq(transactions.id, transactionId)).run();
+
+          if (existing?.goalId && data.status && existing.status !== data.status) {
+            const goal = dbTx
+              .select({ currentAmount: financialGoals.currentAmount })
+              .from(financialGoals)
+              .where(eq(financialGoals.id, existing.goalId))
+              .get();
+            if (goal) {
+              let newAmount = goal.currentAmount;
+              if (data.status === TransactionStatusEnum.Paid) {
+                newAmount = goal.currentAmount + existing.amount;
+              } else if (existing.status === TransactionStatusEnum.Paid) {
+                newAmount = Math.max(0, goal.currentAmount - existing.amount);
+              }
+              dbTx.update(financialGoals)
+                .set({ currentAmount: newAmount, updatedAt })
+                .where(eq(financialGoals.id, existing.goalId))
+                .run();
+            }
+          }
+        });
       } else if (scope === 'all_related') {
         db.update(transactions)
           .set(payload)

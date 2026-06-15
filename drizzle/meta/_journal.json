@@ -71,6 +71,27 @@
       "when": 1779068164052,
       "tag": "0009_bored_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1749859200000,
+      "tag": "0010_goal_date_period",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1749945600000,
+      "tag": "0011_goal_add_start_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1750032000000,
+      "tag": "0012_drop_deadline",
+      "breakpoints": true
     }
   ]
 }

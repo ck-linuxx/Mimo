@@ -120,14 +120,16 @@ export function DatePickerModal({ visible, data, onSelectDate, onClose }: DatePi
 
   useEffect(() => {
     if (visible) {
+      setSelectedDate(null);
+      setShowCalendar(false);
+      setSelectedMonth(data.getMonth());
+      setSelectedYear(data.getFullYear());
       opacityAnim.value = withTiming(1, { duration: 180 });
       scaleAnim.value   = withSpring(1, SPRING_MODAL);
     } else {
       opacityAnim.value = withTiming(0, { duration: 150 });
       scaleAnim.value   = withTiming(0.96, { duration: 150 });
       setSelectedDate(null);
-      setSelectedMonth(data.getMonth());
-      setSelectedYear(data.getFullYear());
       contentOpacity.value = 1;
       monthOpacity.value   = 1;
     }
@@ -207,6 +209,7 @@ export function DatePickerModal({ visible, data, onSelectDate, onClose }: DatePi
   const calendarDays = useMemo<(number | null)[]>(() => {
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     const firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
+    if (!Number.isFinite(firstDay) || !Number.isFinite(daysInMonth)) return [];
     const days: (number | null)[] = Array(firstDay).fill(null);
     for (let d = 1; d <= daysInMonth; d++) days.push(d);
     return days;

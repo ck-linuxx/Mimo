@@ -17,6 +17,7 @@ import { useSettings } from 'hooks/useSettings';
 import { TransactionTypeEnum, TransactionStatusEnum } from 'types';
 import { formatCurrency } from 'utils/formatCurrency';
 import { Skeleton } from 'components/Skeleton';
+import { UpcomingGoalsCard } from 'components/UpcomingGoalsCard';
 
 // ─── Tela ─────────────────────────────────────────────────────────────────────
 
@@ -199,6 +200,14 @@ export default function HomeScreen() {
               />
             </InfoCard>
           )}
+        </View>
+
+        {/* ── Próximas Metas ───────────────────────────────────────────── */}
+        <View className="mb-4">
+          <Text className="text-light-text-secondary dark:text-dark-text-secondary text-base font-semibold mb-3">
+            Próximas Metas
+          </Text>
+          <UpcomingGoalsCard />
         </View>
 
         {/* ── Transações Pendentes ──────────────────────────────────────── */}

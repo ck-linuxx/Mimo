@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
-import { transactions } from 'db/schema';
+import { transactions, financialGoals } from 'db/schema';
 import { TransactionStatusEnum } from 'types';
-
-
 
 export function useUpdateTransactionStatus() {
   const [loading, setLoading] = useState(false);
@@ -19,13 +17,31 @@ export function useUpdateTransactionStatus() {
     setLoading(true);
     setError(null);
     try {
-      const paidAt =
-        status === TransactionStatusEnum.Paid ? Date.now() : null;
+      const tx = db.select().from(transactions).where(eq(transactions.id, transactionId)).get();
 
-      db.update(transactions)
-        .set({ status, paidAt, updatedAt: Date.now() })
-        .where(eq(transactions.id, transactionId))
-        .run();
+      db.transaction((dbTx) => {
+        const paidAt = status === TransactionStatusEnum.Paid ? Date.now() : null;
+        dbTx.update(transactions)
+          .set({ status, paidAt, updatedAt: Date.now() })
+          .where(eq(transactions.id, transactionId))
+          .run();
+
+        if (tx?.goalId) {
+          const goal = dbTx
+            .select({ currentAmount: financialGoals.currentAmount })
+            .from(financialGoals)
+            .where(eq(financialGoals.id, tx.goalId))
+            .get();
+          if (goal) {
+            const delta = status === TransactionStatusEnum.Paid ? tx.amount : -tx.amount;
+            const newAmount = Math.max(0, goal.currentAmount + delta);
+            dbTx.update(financialGoals)
+              .set({ currentAmount: newAmount, updatedAt: Date.now() })
+              .where(eq(financialGoals.id, tx.goalId))
+              .run();
+          }
+        }
+      });
 
       onSuccess?.();
     } catch (e) {

@@ -11,7 +11,8 @@ import { db } from 'db/client';
 import { useForm } from '@tanstack/react-form';
 import { z } from 'zod';
 import { useRouter } from 'expo-router';
-import { transactions, transactionGroups } from 'db/schema';
+import { eq } from 'drizzle-orm';
+import { transactions, transactionGroups, financialGoals } from 'db/schema';
 import { generateId } from 'utils/generateId';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import {
@@ -169,6 +170,17 @@ export default function AddTransaction() {
             createdAt: now,
             updatedAt: now,
           });
+
+          if (value.status === TransactionStatusEnum.Paid && value.goalId) {
+            const goal = db.select({ currentAmount: financialGoals.currentAmount })
+              .from(financialGoals).where(eq(financialGoals.id, value.goalId)).get();
+            if (goal) {
+              db.update(financialGoals)
+                .set({ currentAmount: goal.currentAmount + value.amount, updatedAt: now })
+                .where(eq(financialGoals.id, value.goalId))
+                .run();
+            }
+          }
         } else if (value.paymentType === GroupTypeEnum.Installment) {
           const groupId = generateId();
           const totalAmount = value.isInstallmentValue
@@ -216,6 +228,17 @@ export default function AddTransaction() {
                 updatedAt: now,
               }).run();
             }
+
+            if (value.status === TransactionStatusEnum.Paid && value.goalId) {
+              const goal = tx.select({ currentAmount: financialGoals.currentAmount })
+                .from(financialGoals).where(eq(financialGoals.id, value.goalId)).get();
+              if (goal) {
+                tx.update(financialGoals)
+                  .set({ currentAmount: goal.currentAmount + installmentAmount, updatedAt: now })
+                  .where(eq(financialGoals.id, value.goalId))
+                  .run();
+              }
+            }
           });
         } else if (value.paymentType === GroupTypeEnum.Recurring) {
           const groupId = generateId();
@@ -255,6 +278,17 @@ export default function AddTransaction() {
                 createdAt: now,
                 updatedAt: now,
               }).run();
+            }
+
+            if (value.status === TransactionStatusEnum.Paid && value.goalId) {
+              const goal = tx.select({ currentAmount: financialGoals.currentAmount })
+                .from(financialGoals).where(eq(financialGoals.id, value.goalId)).get();
+              if (goal) {
+                tx.update(financialGoals)
+                  .set({ currentAmount: goal.currentAmount + value.amount, updatedAt: now })
+                  .where(eq(financialGoals.id, value.goalId))
+                  .run();
+              }
             }
           });
         }

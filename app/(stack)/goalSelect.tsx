@@ -55,18 +55,18 @@ export default function GoalSelectScreen() {
             ? Math.min(item.currentAmount / item.targetAmount, 1)
             : 0;
         const color = item.color ?? colors.primaryGold;
-        const deadlineDate = item.deadline ? new Date(item.deadline) : null;
+        const finishDate = item.finishAt ? new Date(item.finishAt) : null;
 
         return (
           <View className="p-4">
             {/* Linha principal: ícone + título + check */}
             <View className="flex-row items-center gap-3 mb-3">
               <View
-                className="w-11 h-11 rounded-xl items-center justify-center"
+                className="w-10 h-10 rounded-xl items-center justify-center"
                 style={{ backgroundColor: color + '25' }}>
                 <Feather
                   name={(item.icon as React.ComponentProps<typeof Feather>['name']) ?? 'target'}
-                  size={20}
+                  size={18}
                   color={color}
                 />
               </View>
@@ -77,9 +77,9 @@ export default function GoalSelectScreen() {
                   numberOfLines={1}>
                   {item.title}
                 </Text>
-                {deadlineDate && (
+                {finishDate && (
                   <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
-                    Prazo: {deadlineDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    Término: {finishDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </Text>
                 )}
               </View>

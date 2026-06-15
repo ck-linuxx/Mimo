@@ -11,6 +11,9 @@ import m0006 from './0006_mysterious_master_mold.sql';
 import m0007 from './0007_remove_expense_classification.sql';
 import m0008 from './0008_drop_tags_column.sql';
 import m0009 from './0009_bored_arclight.sql';
+import m0010 from './0010_goal_date_period.sql';
+import m0011 from './0011_goal_add_start_at.sql';
+import m0012 from './0012_drop_deadline.sql';
 
   export default {
     journal,
@@ -24,7 +27,9 @@ m0005,
 m0006,
 m0007,
 m0008,
-m0009
+m0009,
+m0010,
+m0011,
+m0012,
     }
   }
-  

@@ -82,11 +82,11 @@ function TabButton({ tab, isActive, onPress }: TabButtonProps) {
         ]}>
         <Feather
           name={tab.icon}
-          size={15}
+          size={16}
           color={isActive ? colors.primaryGoldContrast : colors.textSecondary}
         />
         <Text
-          className="text-sm font-semibold"
+          className="text-base font-semibold"
           style={{ color: isActive ? colors.primaryGoldContrast : colors.textSecondary }}>
           {tab.label}
         </Text>
@@ -184,7 +184,7 @@ export default function GoalsManageScreen() {
       ) : error ? (
         <View className="flex-1 items-center justify-center px-8">
           <Feather name="alert-circle" size={40} color={colors.expenseColor} />
-          <Text className="text-base text-center mt-4" style={{ color: colors.textSecondary }}>
+          <Text className="text-lg text-center mt-4" style={{ color: colors.textSecondary }}>
             {error}
           </Text>
         </View>
@@ -212,11 +212,11 @@ export default function GoalsManageScreen() {
                 style={{ backgroundColor: colors.iconBackground }}>
                 <Feather name={empty.icon} size={28} color={colors.textSecondary} />
               </View>
-              <Text className="text-base font-medium" style={{ color: colors.textSecondary }}>
+              <Text className="text-lg font-medium" style={{ color: colors.textSecondary }}>
                 {empty.text}
               </Text>
               <Text
-                className="text-sm text-center mt-1"
+                className="text-lg text-center mt-1"
                 style={{ color: colors.textSecondary, opacity: 0.7 }}>
                 {empty.subtext}
               </Text>
@@ -226,7 +226,7 @@ export default function GoalsManageScreen() {
                   style={{ backgroundColor: colors.primaryGold }}
                   onPress={() => router.push('/goalCreate')}
                   activeOpacity={0.8}>
-                  <Text className="text-sm font-bold" style={{ color: colors.primaryGoldContrast }}>
+                  <Text className="text-base font-bold" style={{ color: colors.primaryGoldContrast }}>
                     Criar primeira meta
                   </Text>
                 </TouchableOpacity>
