@@ -9,7 +9,7 @@
 | `goal-date-period` | 🕳️ Empty (spec pendente) | `.specs/features/goal-date-period/` |
 | `import-data` | ✅ Complete (P1) | `.specs/features/import-data/` |
 | `export-data` | ✅ Complete (P1) | `.specs/features/export-data/` |
-| `import-from-backup` | 📝 Tasks prontas (implementação pendente) | `.specs/features/import-from-backup/` |
+| `import-from-backup` | ✅ Complete | `.specs/features/import-from-backup/` |
 | `transfers-screen` | 🕳️ Ideia (spec pendente) | — |
 
 ---
