@@ -1,18 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { darkColors, lightColors } from 'themes/colors';
@@ -22,6 +11,7 @@ import { useAccounts } from 'hooks/useAccounts';
 import { useCards } from 'hooks/useCards';
 import { useGoals } from 'hooks/useGoals';
 import { useCustomAlert } from 'hooks/useCustomAlert';
+import { useExportData } from 'hooks/useExportData';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import { CustomAlert } from 'components/CustomAlert';
 import { formatCurrency } from 'utils/formatCurrency';
@@ -75,7 +65,7 @@ function ConfigCard({
       }, 120);
       onValueChange(v);
     },
-    [onValueChange, scale],
+    [onValueChange, scale]
   );
 
   const iconBg = disabled ? colors.iconBackground : accentColor + '20';
@@ -84,20 +74,20 @@ function ConfigCard({
 
   return (
     <Animated.View
-      className="bg-light-card-background dark:bg-dark-card-background rounded-2xl p-5 mb-3"
+      className="mb-3 rounded-2xl bg-light-card-background p-5 dark:bg-dark-card-background"
       style={animStyle}>
       <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-3 flex-1">
+        <View className="flex-1 flex-row items-center gap-3">
           <View
-            className="w-12 h-12 rounded-xl items-center justify-center"
+            className="h-12 w-12 items-center justify-center rounded-xl"
             style={{ backgroundColor: iconBg }}>
             <Feather name={icon} size={24} color={iconColor} />
           </View>
           <View className="flex-1">
-            <Text className="text-base font-bold mb-1" style={{ color: titleColor }}>
+            <Text className="mb-1 text-base font-bold" style={{ color: titleColor }}>
               {title}
             </Text>
-            <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm leading-5">
+            <Text className="text-sm leading-5 text-light-text-secondary dark:text-dark-text-secondary">
               {subtitle}
             </Text>
           </View>
@@ -123,9 +113,10 @@ interface MenuItemProps {
   subtitle: string;
   accentColor: string;
   onPress: () => void;
+  loading?: boolean;
 }
 
-function MenuItem({ icon, title, subtitle, accentColor, onPress }: MenuItemProps) {
+function MenuItem({ icon, title, subtitle, accentColor, onPress, loading = false }: MenuItemProps) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
 
@@ -140,12 +131,17 @@ function MenuItem({ icon, title, subtitle, accentColor, onPress }: MenuItemProps
   }, [scale]);
 
   return (
-    <TouchableOpacity onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} activeOpacity={1}>
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={loading}
+      activeOpacity={1}>
       <Animated.View
-        className="bg-light-card-background dark:bg-dark-card-background rounded-2xl p-4 mb-3 flex-row items-center"
+        className="mb-3 flex-row items-center rounded-2xl bg-light-card-background p-4 dark:bg-dark-card-background"
         style={animStyle}>
         <View
-          className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+          className="mr-4 h-12 w-12 items-center justify-center rounded-xl"
           style={{ backgroundColor: accentColor + '20' }}>
           <Feather name={icon} size={24} color={accentColor} />
         </View>
@@ -153,11 +149,15 @@ function MenuItem({ icon, title, subtitle, accentColor, onPress }: MenuItemProps
           <Text className="text-base font-semibold" style={{ color: colors.textPrimary }}>
             {title}
           </Text>
-          <Text className="text-sm mt-0.5 text-light-text-secondary dark:text-dark-text-secondary">
+          <Text className="mt-0.5 text-sm text-light-text-secondary dark:text-dark-text-secondary">
             {subtitle}
           </Text>
         </View>
-        <Feather name="chevron-right" size={20} color={colors.disabled} />
+        {loading ? (
+          <ActivityIndicator size="small" color={accentColor} />
+        ) : (
+          <Feather name="chevron-right" size={20} color={colors.disabled} />
+        )}
       </Animated.View>
     </TouchableOpacity>
   );
@@ -181,22 +181,18 @@ function ThemeToggle() {
       }, 150);
       setAppTheme(newTheme);
     },
-    [theme, setAppTheme, scale],
+    [theme, setAppTheme, scale]
   );
 
   return (
     <Animated.View
-      className="bg-light-card-background dark:bg-dark-card-background rounded-2xl p-4 mb-3"
+      className="mb-3 rounded-2xl bg-light-card-background p-4 dark:bg-dark-card-background"
       style={animStyle}>
       <View className="flex-row items-center gap-3">
         <View
-          className="w-10 h-10 rounded-xl items-center justify-center"
+          className="h-10 w-10 items-center justify-center rounded-xl"
           style={{ backgroundColor: colors.primaryGold + '20' }}>
-          <Feather
-            name={theme === 'dark' ? 'moon' : 'sun'}
-            size={20}
-            color={colors.primaryGold}
-          />
+          <Feather name={theme === 'dark' ? 'moon' : 'sun'} size={20} color={colors.primaryGold} />
         </View>
         <Text className="flex-1 text-base font-semibold" style={{ color: colors.textPrimary }}>
           Tema
@@ -209,7 +205,7 @@ function ThemeToggle() {
                 key={option}
                 onPress={() => handleToggle(option)}
                 activeOpacity={0.8}
-                className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl"
+                className="flex-row items-center gap-1.5 rounded-xl px-3 py-2"
                 style={{
                   backgroundColor: isSelected ? colors.primaryGold : colors.iconBackground,
                   borderWidth: 1.5,
@@ -260,10 +256,10 @@ function AccountCard({ item }: { item: Account }) {
       activeOpacity={1}
       className="mb-3">
       <Animated.View
-        className="bg-light-icon-background dark:bg-dark-icon-background rounded-2xl p-4 flex-row items-center"
+        className="flex-row items-center rounded-2xl bg-light-icon-background p-4 dark:bg-dark-icon-background"
         style={[animStyle, { borderWidth: 1, borderColor: colors.borderColor }]}>
         <View
-          className="w-10 h-10 rounded-xl items-center justify-center mr-3"
+          className="mr-3 h-10 w-10 items-center justify-center rounded-xl"
           style={{ backgroundColor: accentColor + '20' }}>
           <Feather
             name={(item.icon as React.ComponentProps<typeof Feather>['name']) ?? 'briefcase'}
@@ -272,15 +268,18 @@ function AccountCard({ item }: { item: Account }) {
           />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-semibold" style={{ color: colors.textPrimary }} numberOfLines={1}>
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: colors.textPrimary }}
+            numberOfLines={1}>
             {item.name}
           </Text>
-          <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+          <Text className="mt-0.5 text-xs" style={{ color: colors.textSecondary }}>
             {ACCOUNT_TYPE_LABELS[item.type]}
           </Text>
         </View>
         <Text
-          className="text-sm font-bold mr-2"
+          className="mr-2 text-sm font-bold"
           style={{ color: item.balance >= 0 ? colors.incomeColor : colors.expenseColor }}>
           {formatCurrency(item.balance)}
         </Text>
@@ -316,25 +315,28 @@ function CreditCardItem({ item }: { item: Card }) {
       activeOpacity={1}
       className="mb-3">
       <Animated.View
-        className="bg-light-icon-background dark:bg-dark-icon-background rounded-2xl p-4 flex-row items-center"
+        className="flex-row items-center rounded-2xl bg-light-icon-background p-4 dark:bg-dark-icon-background"
         style={[animStyle, { borderWidth: 1, borderColor: colors.borderColor }]}>
         <View
-          className="w-10 h-10 rounded-xl items-center justify-center mr-3"
+          className="mr-3 h-10 w-10 items-center justify-center rounded-xl"
           style={{ backgroundColor: accentColor + '20' }}>
           <Feather name="credit-card" size={18} color={accentColor} />
         </View>
         <View className="flex-1">
-          <Text className="text-sm font-semibold" style={{ color: colors.textPrimary }} numberOfLines={1}>
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: colors.textPrimary }}
+            numberOfLines={1}>
             {item.name}
           </Text>
           {item.lastFourDigits ? (
-            <Text className="text-xs mt-0.5" style={{ color: colors.textSecondary }}>
+            <Text className="mt-0.5 text-xs" style={{ color: colors.textSecondary }}>
               •••• {item.lastFourDigits}
             </Text>
           ) : null}
         </View>
         {item.creditLimit != null ? (
-          <Text className="text-sm font-bold mr-2" style={{ color: colors.textSecondary }}>
+          <Text className="mr-2 text-sm font-bold" style={{ color: colors.textSecondary }}>
             {formatCurrency(item.creditLimit)}
           </Text>
         ) : null}
@@ -348,7 +350,7 @@ function CreditCardItem({ item }: { item: Card }) {
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <Text className="text-light-text-secondary dark:text-dark-text-secondary text-xs font-bold uppercase tracking-widest mb-2 px-1">
+    <Text className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary">
       {label}
     </Text>
   );
@@ -372,7 +374,8 @@ export default function SettingsScreen() {
     loading,
   } = useSettings();
 
-  const { alertConfig, visible, hideAlert, showError, showSuccess, showInfo } = useCustomAlert();
+  const { alertConfig, visible, hideAlert, showError, showSuccess, showInfo, showConfirm } = useCustomAlert();
+  const exportData = useExportData();
 
   const { data: accountsData, loading: loadingAccounts, refetch: refetchAccounts } = useAccounts();
   const { data: cardsData, loading: loadingCards, refetch: refetchCards } = useCards();
@@ -383,9 +386,10 @@ export default function SettingsScreen() {
       refetchAccounts();
       refetchCards();
       refetchGoals();
-    }, [refetchAccounts, refetchCards, refetchGoals]),
+    }, [refetchAccounts, refetchCards, refetchGoals])
   );
 
+  const [isExporting, setIsExporting] = useState(false);
   const [isTogglingBiometrics, setIsTogglingBiometrics] = useState(false);
   const [activeTab, setActiveTab] = useState<'accounts' | 'cards'>('accounts');
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
@@ -396,7 +400,7 @@ export default function SettingsScreen() {
       if (!isBiometricsAvailable && value) {
         showError(
           'Biometria Indisponível',
-          'Seu dispositivo não possui biometria configurada ou não suporta este recurso.',
+          'Seu dispositivo não possui biometria configurada ou não suporta este recurso.'
         );
         return;
       }
@@ -406,18 +410,21 @@ export default function SettingsScreen() {
         if (value) {
           showSuccess(
             'Biometria Habilitada',
-            'A partir de agora, você precisará usar sua digital ou Face ID para acessar o app.',
+            'A partir de agora, você precisará usar sua digital ou Face ID para acessar o app.'
           );
         } else {
           showInfo('Biometria Desabilitada', 'A autenticação biométrica foi desativada.');
         }
       } catch (e) {
-        showError('Erro', e instanceof Error ? e.message : 'Não foi possível alterar a configuração de biometria');
+        showError(
+          'Erro',
+          e instanceof Error ? e.message : 'Não foi possível alterar a configuração de biometria'
+        );
       } finally {
         setIsTogglingBiometrics(false);
       }
     },
-    [isBiometricsAvailable, setBiometrics, showError, showSuccess, showInfo],
+    [isBiometricsAvailable, setBiometrics, showError, showSuccess, showInfo]
   );
 
   const handleToggleNotifications = useCallback(
@@ -428,10 +435,13 @@ export default function SettingsScreen() {
         if (value) {
           showSuccess(
             'Notificações Habilitadas',
-            'Você receberá lembretes sobre transações próximas do vencimento.',
+            'Você receberá lembretes sobre transações próximas do vencimento.'
           );
         } else {
-          showInfo('Notificações Desabilitadas', 'Você não receberá mais notificações de lembretes.');
+          showInfo(
+            'Notificações Desabilitadas',
+            'Você não receberá mais notificações de lembretes.'
+          );
         }
       } catch {
         showError('Erro', 'Não foi possível alterar a configuração de notificações');
@@ -439,7 +449,7 @@ export default function SettingsScreen() {
         setIsTogglingNotifications(false);
       }
     },
-    [setNotifications, showError, showSuccess, showInfo],
+    [setNotifications, showError, showSuccess, showInfo]
   );
 
   const handleToggleReceipt = useCallback(
@@ -450,12 +460,12 @@ export default function SettingsScreen() {
         if (value) {
           showSuccess(
             'Comprovante de Pagamento',
-            'Você será perguntado se deseja adicionar um comprovante ao marcar uma transação como paga.',
+            'Você será perguntado se deseja adicionar um comprovante ao marcar uma transação como paga.'
           );
         } else {
           showInfo(
             'Comprovante de Pagamento',
-            'O app não perguntará mais sobre comprovantes ao marcar transações como pagas.',
+            'O app não perguntará mais sobre comprovantes ao marcar transações como pagas.'
           );
         }
       } catch {
@@ -464,16 +474,69 @@ export default function SettingsScreen() {
         setIsTogglingReceipt(false);
       }
     },
-    [setAskForReceipt, showError, showSuccess, showInfo],
+    [setAskForReceipt, showError, showSuccess, showInfo]
   );
 
+  const handleExportData = useCallback(() => {
+    showConfirm(
+      'Exportar Dados',
+      'Categorias, contas, cartões, metas e transações serão exportados em formato JSON.',
+      () => {
+        setIsExporting(true);
+        exportData.mutate(
+          (counts) => {
+            setIsExporting(false);
+            showSuccess(
+              'Backup Gerado',
+              `${counts.transactions} transações, ${counts.accounts} contas, ${counts.categories} categorias exportadas.`
+            );
+          },
+          (err) => {
+            setIsExporting(false);
+            showError('Erro ao Exportar', err.message);
+          }
+        );
+      }
+    );
+  }, [showConfirm, exportData, showSuccess, showError]);
+
   const statsItems = [
-    { label: 'Contas', value: loadingAccounts ? '-' : String(accountsData.length), icon: 'credit-card' as const, color: colors.primaryGold },
-    { label: 'Cartões', value: loadingCards ? '-' : String(cardsData.length), icon: 'credit-card' as const, color: colors.incomeColor },
-    { label: 'Metas', value: loadingGoals ? '-' : String(goalsData.length), icon: 'target' as const, color: colors.expenseColor },
+    {
+      label: 'Contas',
+      value: loadingAccounts ? '-' : String(accountsData.length),
+      icon: 'credit-card' as const,
+      color: colors.primaryGold,
+    },
+    {
+      label: 'Cartões',
+      value: loadingCards ? '-' : String(cardsData.length),
+      icon: 'credit-card' as const,
+      color: colors.incomeColor,
+    },
+    {
+      label: 'Metas',
+      value: loadingGoals ? '-' : String(goalsData.length),
+      icon: 'target' as const,
+      color: colors.expenseColor,
+    },
   ];
 
   const menuItems = [
+    {
+      icon: 'download' as const,
+      title: 'Importar dados',
+      subtitle: 'Importar extrato bancário OFX ou CSV',
+      accentColor: colors.primaryGold,
+      onPress: () => router.push('/importData'),
+    },
+    {
+      icon: 'upload' as const,
+      title: 'Exportar dados',
+      subtitle: 'Fazer backup completo em JSON',
+      accentColor: colors.incomeColor,
+      onPress: handleExportData,
+      loading: isExporting,
+    },
     {
       icon: 'tag' as const,
       title: 'Categorias',
@@ -493,7 +556,8 @@ export default function SettingsScreen() {
       title: 'Sobre o App',
       subtitle: 'Informações sobre o Mimo',
       accentColor: colors.incomeColor,
-      onPress: () => showInfo('Mimo', 'Versão 1.0.0\n\nSeu aplicativo de controle financeiro pessoal.'),
+      onPress: () =>
+        showInfo('Mimo', 'Versão 1.0.0\n\nSeu aplicativo de controle financeiro pessoal.'),
     },
   ];
 
@@ -654,4 +718,3 @@ export default function SettingsScreen() {
     </ScreenWrapper>
   );
 }
-

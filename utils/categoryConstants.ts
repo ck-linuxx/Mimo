@@ -18,7 +18,7 @@ export const PRESET_COLORS = [
   '#6B7280', // cinza
 ] as const;
 
-// Ícones Feather relevantes para categorias financeiras (80 ícones — 4 páginas de 20)
+// Ícones Feather relevantes para categorias financeiras (94 ícones — 4 páginas de 20 + 1 página de 14)
 export const CATEGORY_ICONS = [
   // Página 1 — Compras, Casa, Tecnologia, Entretenimento
   'shopping-cart', 'shopping-bag', 'coffee', 'tag', 'scissors',
@@ -40,6 +40,10 @@ export const CATEGORY_ICONS = [
   'gift', 'bell', 'clock', 'calendar', 'inbox',
   'send', 'save', 'upload', 'download', 'share-2',
   'grid', 'refresh-cw', 'filter', 'eye', 'more-horizontal',
+  // Página 5 — Bancário & Transferências
+  'rotate-ccw', 'rotate-cw', 'repeat', 'arrow-up-circle', 'arrow-down-circle',
+  'check-circle', 'x-circle', 'minus-circle', 'plus-circle', 'log-in',
+  'log-out', 'link-2', 'copy', 'corner-up-left',
 ] as const;
 
 export type PresetColor = (typeof PRESET_COLORS)[number];

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "mermaid-studio": {
+      "source": "tech-leads-club/agent-skills",
+      "sourceType": "github",
+      "skillPath": "packages/skills-catalog/skills/(tooling)/mermaid-studio/SKILL.md",
+      "computedHash": "ac6c344e21319a5c7426a1b8c21229afe9a687aa743bd366bf11cad66bef328d"
+    }
+  }
+}

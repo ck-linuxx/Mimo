@@ -56,7 +56,6 @@ export function Loading({
       -1,
     );
 
-    // Pontos sequenciais: ciclo de 1200ms, cada um com offset de 200ms
     dot0.value = withRepeat(
       withSequence(
         withTiming(1,   { duration: 400 }),
@@ -98,38 +97,26 @@ export function Loading({
 
   return (
     <View
-      style={{
-        backgroundColor: colors.cardBackground,
-        borderRadius: 16,
-        padding: s.containerPad,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: colors.borderColor,
-      }}
+      className="w-full items-center justify-center rounded-2xl border border-light-border-color bg-light-card-background dark:border-dark-border-color dark:bg-dark-card-background"
+      style={{ padding: s.containerPad }}
     >
       {showIcon && (
-        <View style={{ marginBottom: 20 }}>
+        <View className="mb-5">
           <Animated.View style={rotateStyle}>
             <View
+              className="items-center justify-center rounded-full border-2"
               style={{
-                borderRadius: 999,
                 padding: s.iconPad,
-                alignItems: 'center',
-                justifyContent: 'center',
                 backgroundColor: colors.primaryGold + '15',
-                borderWidth: 2,
                 borderColor: colors.primaryGold + '30',
               }}
             >
               <Animated.View style={pulseStyle}>
                 <View
+                  className="items-center justify-center rounded-full"
                   style={{
                     width: s.icon,
                     height: s.icon,
-                    borderRadius: 999,
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     backgroundColor: colors.primaryGold + '20',
                   }}
                 >
@@ -142,25 +129,18 @@ export function Loading({
       )}
 
       <Text
-        style={{
-          color: colors.textPrimary,
-          fontWeight: '600',
-          fontSize: s.text,
-          textAlign: 'center',
-          marginBottom: 4,
-        }}
+        className="mb-1 text-center font-semibold text-light-text-primary dark:text-dark-text-primary"
+        style={{ fontSize: s.text }}
       >
         {message}
       </Text>
 
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-        {dotStyles.map((style, i) => (
+      <View className="mt-4 flex-row gap-2">
+        {dotStyles.map((dotStyle, i) => (
           <Animated.View
             key={i}
-            style={[
-              { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primaryGold },
-              style,
-            ]}
+            className="h-1.5 w-1.5 rounded-full bg-light-primary-gold dark:bg-dark-primary-gold"
+            style={dotStyle}
           />
         ))}
       </View>
@@ -169,19 +149,8 @@ export function Loading({
 }
 
 export function LoadingScreen({ message }: { message?: string }) {
-  const { theme } = useTheme();
-  const colors = theme === 'dark' ? darkColors : lightColors;
-
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
-    >
+    <View className="flex-1 items-center justify-center bg-light-background p-6 dark:bg-dark-background">
       <Loading message={message} size="large" />
     </View>
   );

@@ -29,6 +29,7 @@ export default function StackGroupLayout() {
       <Stack.Screen name="cardBillingDetail" />
       <Stack.Screen name="accountSelect" />
       <Stack.Screen name="categoriesManage" />
+      <Stack.Screen name="importData" />
     </Stack>
   );
 }

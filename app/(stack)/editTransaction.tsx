@@ -495,9 +495,7 @@ export default function EditTransactionScreen() {
                   color: colors.textPrimary,
                   fontWeight: '600',
                   fontSize: 15,
-                  marginBottom: 8,
                 }}>
-                Data
               </Text>
               <DatePicker data={field.state.value} onChangeData={field.handleChange} />
             </View>

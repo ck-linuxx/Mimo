@@ -32,6 +32,8 @@ function AppNavigator() {
   );
 }
 
+const BIOMETRIC_GRACE_PERIOD_MS = 2 * 60 * 1000;
+
 function BiometricGate({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
@@ -41,6 +43,7 @@ function BiometricGate({ children }: { children: React.ReactNode }) {
   const isAuthenticating = useRef(false);
   const hasInitialized = useRef(false);
   const appState = useRef<AppStateStatus>(AppState.currentState);
+  const backgroundedAt = useRef<number | null>(null);
 
   const authenticate = useCallback(async () => {
     if (isAuthenticating.current) return;
@@ -72,16 +75,24 @@ function BiometricGate({ children }: { children: React.ReactNode }) {
     authenticate();
   }, [settingsLoading, biometricsEnabled, isBiometricsAvailable, authenticate]);
 
-  // Bloqueia quando o app volta do background
+  // Bloqueia quando o app volta do background por mais de 2 minutos
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (appState.current.match(/inactive|background/) && nextState === 'active') {
-        if (biometricsEnabled && isBiometricsAvailable) {
+      const prev = appState.current;
+      appState.current = nextState;
+
+      if (prev === 'active' && nextState !== 'active') {
+        backgroundedAt.current = Date.now();
+      }
+
+      if (prev !== 'active' && nextState === 'active') {
+        const elapsed = backgroundedAt.current ? Date.now() - backgroundedAt.current : Infinity;
+        backgroundedAt.current = null;
+        if (biometricsEnabled && isBiometricsAvailable && elapsed >= BIOMETRIC_GRACE_PERIOD_MS) {
           setIsLocked(true);
           authenticate();
         }
       }
-      appState.current = nextState;
     });
     return () => subscription.remove();
   }, [biometricsEnabled, isBiometricsAvailable, authenticate]);
@@ -111,12 +122,7 @@ function BiometricGate({ children }: { children: React.ReactNode }) {
         <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center' }}>
           Autentique-se para continuar
         </Text>
-        <AppButton
-          label="Tentar novamente"
-          onPress={authenticate}
-          icon="lock"
-          size="full"
-        />
+        <AppButton label="Tentar novamente" onPress={authenticate} icon="lock" size="full" />
       </View>
     );
   }
@@ -135,9 +141,17 @@ export default function RootLayout() {
 
   if (error) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0D0D0D' }}>
-        <Text style={{ color: '#EF4444', fontSize: 16, textAlign: 'center', paddingHorizontal: 24 }}>
-          Erro ao inicializar banco de dados:{'\n'}{error.message}
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#0D0D0D',
+        }}>
+        <Text
+          style={{ color: '#EF4444', fontSize: 16, textAlign: 'center', paddingHorizontal: 24 }}>
+          Erro ao inicializar banco de dados:{'\n'}
+          {error.message}
         </Text>
       </View>
     );
@@ -145,7 +159,13 @@ export default function RootLayout() {
 
   if (!dbReady) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0D0D0D' }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#0D0D0D',
+        }}>
         <Loading size="large" message="Iniciando..." />
       </View>
     );
@@ -163,4 +183,3 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
-
