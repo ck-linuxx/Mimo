@@ -529,14 +529,14 @@ export default function SettingsScreen() {
       accentColor: colors.primaryGold,
       onPress: () => router.push('/importData'),
     },
-    {
-      icon: 'upload' as const,
-      title: 'Exportar dados',
-      subtitle: 'Fazer backup completo em JSON',
-      accentColor: colors.incomeColor,
-      onPress: handleExportData,
-      loading: isExporting,
-    },
+    // {
+    //   icon: 'upload' as const,
+    //   title: 'Exportar dados',
+    //   subtitle: 'Fazer backup completo em JSON',
+    //   accentColor: colors.incomeColor,
+    //   onPress: handleExportData,
+    //   loading: isExporting,
+    // },
     {
       icon: 'tag' as const,
       title: 'Categorias',
