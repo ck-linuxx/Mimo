@@ -1,7 +1,18 @@
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
+import migrations from '../drizzle/migrations.js';
 
 export const expo = SQLite.openDatabaseSync('db.db');
+
+// Roda as migrations para garantir que o schema está atualizado
+try {
+  migrate(drizzle(expo), migrations);
+  console.log('Migrations aplicadas com sucesso!');
+} catch (e) {
+  console.error('Erro ao aplicar migrations:', e);
+}
+
 
 // Pre-migration fix: o RENAME COLUMN original deixou o banco com `finish_at` mas sem
 // `deadline` e sem `start_at`. A migração 0010 tenta `ADD finish_at`, que falha, parando

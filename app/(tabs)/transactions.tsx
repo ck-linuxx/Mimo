@@ -124,12 +124,23 @@ export default function TransactionsScreen() {
         <ActionButton icon="chevron-right" onPress={() => navegarMes('proximo')} />
       </View>
 
-      {loading ? (
+      {/* Loading inicial (sem dados ainda) */}
+      {loading && data.length === 0 && (
         <View style={{ flex: 1, padding: 20 }}>
           <Loading message="Carregando transações..." size="medium" />
         </View>
-      ) : (
+      )}
+
+      {/* FlatList permanece montada após o primeiro load — evita remount custoso na troca de mês.
+          Loading de refetch aparece como overlay absoluto enquanto FlatList fica transparente. */}
+      <View style={{ flex: 1, display: data.length === 0 && loading ? 'none' : 'flex' }}>
+        {loading && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, alignItems: 'center', justifyContent: 'center' }}>
+            <Loading message="Carregando transações..." size="medium" />
+          </View>
+        )}
         <FlatList
+          style={{ opacity: loading ? 0 : 1 }}
           data={groups}
           keyExtractor={(item) => item.date}
           showsVerticalScrollIndicator={false}
@@ -300,7 +311,7 @@ export default function TransactionsScreen() {
             </View>
           )}
         />
-      )}
+      </View>
     </ScreenWrapper>
   );
 }

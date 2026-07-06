@@ -8,9 +8,12 @@
 | `goal-progress-sync` | 🔧 In Progress | `.specs/features/goal-progress-sync/` |
 | `goal-date-period` | 🕳️ Empty (spec pendente) | `.specs/features/goal-date-period/` |
 | `import-data` | ✅ Complete (P1) | `.specs/features/import-data/` |
-| `export-data` | ✅ Complete (P1) | `.specs/features/export-data/` |
+| `export-data` | ✅ Complete (v2: .db format com imagens) | `.specs/features/export-data/` |
 | `import-from-backup` | ✅ Complete | `.specs/features/import-from-backup/` |
 | `transfers-screen` | 🕳️ Ideia (spec pendente) | — |
+| `google-drive-sync` | 📋 Spec pronto | `.specs/features/google-drive-sync/` |
+| `import-from-db` | ✅ Complete | `.specs/features/import-from-db/` |
+| `subscription-annual-projection` | ✅ Complete | `.specs/features/subscription-annual-projection/` |
 
 ---
 

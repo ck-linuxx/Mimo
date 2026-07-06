@@ -2,35 +2,33 @@ import { useState } from 'react';
 import { InteractionManager } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { buildBackup } from 'utils/exportData/buildBackup';
-import type { BackupCounts } from 'utils/exportData/types';
 
 export function useExportData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const mutate = (onSuccess?: (counts: BackupCounts) => void, onError?: (err: Error) => void) => {
+  const mutate = (onSuccess?: () => void, onError?: (err: Error) => void) => {
     setLoading(true);
     setError(null);
 
     InteractionManager.runAfterInteractions(async () => {
       try {
-        const { backup, counts } = buildBackup();
-        const filename = `mimoV2-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        const fileUri = FileSystem.cacheDirectory + filename;
+        const dbPath = FileSystem.documentDirectory + 'SQLite/db.db';
+        const filename = `mimoV2-backup-${new Date().toISOString().slice(0, 10)}.db`;
+        const destUri = FileSystem.cacheDirectory + filename;
 
-        await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(backup));
+        await FileSystem.copyAsync({ from: dbPath, to: destUri });
 
         const available = await Sharing.isAvailableAsync();
         if (available) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: 'application/json',
+          await Sharing.shareAsync(destUri, {
+            mimeType: 'application/octet-stream',
             dialogTitle: 'Exportar backup mimoV2',
-            UTI: 'public.json',
+            UTI: 'public.database',
           });
         }
 
-        onSuccess?.(counts);
+        onSuccess?.();
       } catch (e) {
         const err = e instanceof Error ? e : new Error('Erro ao exportar dados');
         setError(err.message);

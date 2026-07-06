@@ -8,6 +8,7 @@ import { useCustomAlert } from 'hooks/useCustomAlert';
 import { useAccounts } from 'hooks/useAccounts';
 import { useImportSave } from 'hooks/useImportSave';
 import { useRestoreBackup } from 'hooks/useRestoreBackup';
+import { useImportFromDb } from 'hooks/useImportFromDb';
 import { ScreenWrapper } from 'components/ScreenWrapper';
 import { CustomAlert } from 'components/CustomAlert';
 import { ActionButton } from 'components/ActionButton';
@@ -19,6 +20,7 @@ import { pickImportFile } from 'utils/importData/filePicker';
 import { parseOFX } from 'utils/importData/parseOFX';
 import { parseCSV } from 'utils/importData/parseCSV';
 import { parseBackupJSON } from 'utils/importData/parseBackupJSON';
+import { readDbBackup } from 'utils/importData/readDbBackup';
 import { AccountTypeEnum } from 'types';
 import type { ImportPhase, ImportedTransaction, ParsedFile } from 'utils/importData/types';
 
@@ -38,6 +40,7 @@ export default function ImportDataScreen() {
   const { data: accountsData } = useAccounts();
   const { mutate: saveMutate } = useImportSave();
   const { mutate: restoreMutate } = useRestoreBackup();
+  const importFromDb = useImportFromDb();
 
   const [phase, setPhase] = useState<ImportPhase>('idle');
   const [parsedFile, setParsedFile] = useState<ParsedFile | null>(null);
@@ -112,16 +115,57 @@ export default function ImportDataScreen() {
     [showConfirm, showError, showSuccess, restoreMutate, router]
   );
 
+  const handleDbImportFlow = useCallback(
+    (uri: string) => {
+      showConfirm(
+        'Mesclar backup',
+        'Os registros do backup serão adicionados ou atualizarão os existentes. Seus dados locais que não estão no backup serão mantidos.',
+        () => {
+          setPhase('saving');
+          InteractionManager.runAfterInteractions(() => {
+            readDbBackup(uri)
+              .then((data) => {
+                importFromDb.mutate(
+                  data,
+                  (counts) => {
+                    showSuccess(
+                      'Backup mesclado',
+                      `${counts.transactions} transações, ${counts.accounts} contas, ${counts.categories} categorias mescladas.`,
+                      4000
+                    );
+                    router.replace('/');
+                  },
+                  (msg) => {
+                    showError('Erro ao mesclar', msg);
+                    setPhase('idle');
+                  }
+                );
+              })
+              .catch((e) => {
+                showError('Erro', e instanceof Error ? e.message : 'Erro ao ler backup');
+                setPhase('idle');
+              });
+          });
+        }
+      );
+    },
+    [showConfirm, showError, showSuccess, importFromDb, router]
+  );
+
   const handleSelectFile = async () => {
     try {
       const picked = await pickImportFile();
       if (!picked) return;
+      if (picked.format === 'db') {
+        handleDbImportFlow(picked.uri);
+        return;
+      }
       if (picked.format === 'json') {
         handleRestoreFlow(picked.content);
         return;
       }
       showConfirm('Importar extrato', `Deseja importar "${picked.name}"?`, () =>
-        startParsing(picked)
+        startParsing(picked as { content: string; format: 'ofx' | 'csv'; name: string })
       );
     } catch (e) {
       showError('Erro', e instanceof Error ? e.message : 'Não foi possível abrir o arquivo');
@@ -207,8 +251,8 @@ export default function ImportDataScreen() {
             Importar extrato bancário
           </Text>
           <Text className="mb-8 text-center text-sm leading-6 text-light-text-secondary dark:text-dark-text-secondary">
-            Selecione um arquivo de extrato no formato OFX ou CSV para importar seus lançamentos
-            bancários.
+            Selecione um extrato bancário (OFX ou CSV) ou um backup do app (.db) para importar seus
+            dados.
           </Text>
           <TouchableOpacity
             onPress={handleSelectFile}

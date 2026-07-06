@@ -480,16 +480,13 @@ export default function SettingsScreen() {
   const handleExportData = useCallback(() => {
     showConfirm(
       'Exportar Dados',
-      'Categorias, contas, cartões, metas e transações serão exportados em formato JSON.',
+      'Todos os seus dados financeiros e imagens de comprovantes serão salvos em um arquivo de backup.',
       () => {
         setIsExporting(true);
         exportData.mutate(
-          (counts) => {
+          () => {
             setIsExporting(false);
-            showSuccess(
-              'Backup Gerado',
-              `${counts.transactions} transações, ${counts.accounts} contas, ${counts.categories} categorias exportadas.`
-            );
+            showSuccess('Backup Exportado', 'Backup exportado com sucesso.');
           },
           (err) => {
             setIsExporting(false);
@@ -529,14 +526,14 @@ export default function SettingsScreen() {
       accentColor: colors.primaryGold,
       onPress: () => router.push('/importData'),
     },
-    // {
-    //   icon: 'upload' as const,
-    //   title: 'Exportar dados',
-    //   subtitle: 'Fazer backup completo em JSON',
-    //   accentColor: colors.incomeColor,
-    //   onPress: handleExportData,
-    //   loading: isExporting,
-    // },
+    {
+      icon: 'upload' as const,
+      title: 'Exportar dados',
+      subtitle: 'Fazer backup',
+      accentColor: colors.incomeColor,
+      onPress: handleExportData,
+      loading: isExporting,
+    },
     {
       icon: 'tag' as const,
       title: 'Categorias',

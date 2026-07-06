@@ -42,6 +42,12 @@ import { buildFormPatch } from 'utils/buildFormPatch';
 // ─── Animation constants ──────────────────────────────────────────────────────
 const SPRING_MODAL = { damping: 55, stiffness: 700 } as const;
 
+const getFieldError = (error: unknown): string => {
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) return String((error as { message: unknown }).message);
+  return '';
+};
+
 // ─── Form ─────────────────────────────────────────────────────────────────────
 
 interface EditFormValues {
@@ -53,7 +59,7 @@ interface EditFormValues {
 }
 
 const formSchema = z.object({
-  amount: z.number().min(0.01, 'Informe o valor'),
+  amount: z.number().min(0, 'Informe o valor'),
   description: z.string().min(1, 'Informe o nome da transação'),
   date: z.date(),
   status: z.enum(TransactionStatusEnum),
@@ -444,7 +450,7 @@ export default function EditTransactionScreen() {
               </View>
               {field.state.meta.errors[0] && (
                 <Text className="mt-1 text-xs" style={{ color: colors.expenseColor }}>
-                  {String(field.state.meta.errors[0])}
+                  {getFieldError(field.state.meta.errors[0])}
                 </Text>
               )}
             </View>
@@ -479,7 +485,7 @@ export default function EditTransactionScreen() {
               </View>
               {field.state.meta.errors[0] && (
                 <Text className="mt-1 text-xs" style={{ color: colors.expenseColor }}>
-                  {String(field.state.meta.errors[0])}
+                  {getFieldError(field.state.meta.errors[0])}
                 </Text>
               )}
             </View>

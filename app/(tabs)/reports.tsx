@@ -301,6 +301,12 @@ export default function ReportsScreen() {
     [subscriptionCategoryTotals],
   );
 
+  const monthlySubscriptionTotal = useMemo(
+    () => subscriptionCategoryTotals.reduce((sum, item) => sum + item.value, 0),
+    [subscriptionCategoryTotals],
+  );
+  const annualProjection = monthlySubscriptionTotal * 12;
+
   useEffect(() => {
     const first = subscriptionSelectorItems[0]?.id ?? null;
     setSubscriptionSelectedId((prev) =>
@@ -543,6 +549,22 @@ export default function ReportsScreen() {
             emptyListText="Nenhuma transação de assinatura na categoria selecionada"
             listIcon="repeat"
           />
+          {!isSubscriptionFirstLoad && monthlySubscriptionTotal > 0 && (
+            <View className="mt-3 bg-light-card-background dark:bg-dark-card-background rounded-[14px] border border-light-border-color dark:border-dark-border-color p-[14px] gap-1">
+              <View className="flex-row items-center gap-1.5">
+                <Feather name="calendar" size={14} color={colors.textSecondary} />
+                <Text className="text-light-text-secondary dark:text-dark-text-secondary text-[13px]">
+                  Projeção anual
+                </Text>
+              </View>
+              <Text className="text-light-text-primary dark:text-dark-text-primary text-lg font-bold">
+                {formatCurrency(annualProjection)}
+              </Text>
+              <Text className="text-light-text-secondary dark:text-dark-text-secondary text-[11px]">
+                Estimativa baseada no total de assinaturas de {MONTHS_PT[selectedMonth]}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* ── Bar: Provisão (próximos 2 meses) ──────────────────────────────── */}
