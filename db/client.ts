@@ -1,39 +1,42 @@
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
-import migrations from '../drizzle/migrations.js';
+import { ExpoSQLitePreparedQuery } from 'drizzle-orm/expo-sqlite/session';
+
+// ─── Patch: finaliza prepared statements após cada operação do Drizzle ───────
+//
+// O ExpoSQLitePreparedQuery do Drizzle (drizzle-orm ^0.45) não finaliza os
+// prepared statements após executá-los. No expo-sqlite SDK 57 (nova arquitetura),
+// isso causa SIGSEGV em exsqlite3_clear_bindings() quando o nativeStatement é
+// liberado pelo GC ou reutilizado sem o stmt* ainda ser válido.
+//
+// O próprio expo-sqlite (runSync, getFirstSync, etc.) sempre chama finalizeSync()
+// em um bloco finally. Este patch faz o mesmo para os métodos do Drizzle.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const proto = ExpoSQLitePreparedQuery.prototype as any;
+
+(['run', 'all', 'get', 'values'] as const).forEach((method) => {
+  const original = proto[method];
+  proto[method] = function (this: ExpoSQLitePreparedQuery<unknown>, pv?: unknown) {
+    try {
+      return original.call(this, pv);
+    } finally {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (this as any).stmt?.finalizeSync?.();
+      } catch (_) {
+        // já finalizado — ignorar
+      }
+    }
+  };
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const expo = SQLite.openDatabaseSync('db.db');
 
-// Roda as migrations para garantir que o schema está atualizado
-try {
-  migrate(drizzle(expo), migrations);
-  console.log('Migrations aplicadas com sucesso!');
-} catch (e) {
-  console.error('Erro ao aplicar migrations:', e);
-}
-
-
-// Pre-migration fix: o RENAME COLUMN original deixou o banco com `finish_at` mas sem
-// `deadline` e sem `start_at`. A migração 0010 tenta `ADD finish_at`, que falha, parando
-// toda a cadeia. Aqui renomeamos de volta para `deadline` para que 0010 rode normalmente
-// e as migrações seguintes (0011, 0012) possam completar.
-try {
-  let cols = expo.getAllSync<{ name: string }>(`PRAGMA table_info(financial_goals)`);
-  let has = (n: string) => cols.some((c) => c.name === n);
-
-  if (has('finish_at') && !has('deadline') && !has('start_at')) {
-    expo.execSync(`ALTER TABLE financial_goals RENAME COLUMN finish_at TO deadline`);
-    cols = expo.getAllSync<{ name: string }>(`PRAGMA table_info(financial_goals)`);
-    has = (n: string) => cols.some((c) => c.name === n);
-  }
-
-  // migration 0011 pode não ter rodado ainda; garante a coluna para não bloquear o INSERT
-  if (has('finish_at') && !has('start_at')) {
-    expo.execSync(`ALTER TABLE financial_goals ADD COLUMN start_at INTEGER`);
-  }
-} catch (_) {
-  // tabela ainda não existe (instalação nova) — sem ação necessária
-}
-
+// Migrations e pre-migration fixes são executados em app/_layout.tsx
+// via runMigrationsSync (utils/runMigrations.ts) usando expo.execSync,
+// que não usa prepareSync/executeSync e evita o crash de null stmt.
 export const db = drizzle(expo);

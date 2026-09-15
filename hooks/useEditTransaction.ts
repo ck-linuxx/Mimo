@@ -9,6 +9,7 @@ interface EditData {
   description?: string;
   amount?: number;
   date?: number;
+  dueDate?: number | null;
   status?: TransactionStatusEnum;
   paidAt?: number | null;
   frequency?: FrequencyEnum | null;

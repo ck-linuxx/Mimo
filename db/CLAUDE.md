@@ -58,6 +58,12 @@ Ocorrências individuais de movimentações financeiras.
 - `amount`: valor em reais decimais (ex: `99.90`).
 - `status`: `pending` | `paid` | `cancelled`.
 - `paidAt`: timestamp de quando foi efetivamente pago (null enquanto pendente).
+- `date`: timestamp ms da data real da compra/movimentação.
+- `dueDate`: **integer** (timestamp ms). Data de vencimento da fatura.
+  - Compras com cartão: calculado por `computeCardDueDate(date, card.closingDay)`.
+  - Sem cartão: igual a `date`.
+  - Garantido não-nulo após a migration `0013_due_date_integer` (`UPDATE WHERE due_date IS NULL`).
+  - Usado para contabilizar despesas de cartão no mês correto de cobrança.
 - `accountId`: conta vinculada (débito/dinheiro). Obrigatório para receitas.
 - `cardId`: cartão de crédito usado (nullable). Quando presente, a despesa não debita da conta.
 - `goalId`: meta vinculada (nullable). Ao pagar, incrementa `financial_goals.currentAmount`.

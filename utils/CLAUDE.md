@@ -18,6 +18,29 @@ const proxVencimento = addByFrequency(dataInicio, FrequencyEnum.Monthly, 1);
 
 ---
 
+### `cardDueDate.ts`
+Função pura para calcular a data de vencimento da fatura de cartão de crédito.
+
+**Exportações:**
+- `computeCardDueDate(purchaseDate, closingDay)` — calcula o `dueDate` a partir da data da compra e do dia de fechamento do cartão.
+
+**Regras de negócio:**
+- `purchaseDate.getDate() < closingDay` → `dueDate` = `closingDay` do mesmo mês da compra.
+- `purchaseDate.getDate() >= closingDay` → `dueDate` = `closingDay` do mês seguinte (compra no dia de fechamento vai para a próxima fatura).
+- Overflow de dias: `Math.min(closingDay, diasNoMêsAlvo)` — ex: `closingDay=31` em fevereiro usa dia 28.
+- `closingDay` null/undefined → `dueDate = purchaseDate.getTime()` (sem cartão, sem ciclo de fatura).
+
+**Retorno:** timestamp em ms do início do dia de vencimento (`new Date(year, month, day, 0,0,0,0).getTime()`).
+
+**Uso:**
+```ts
+import { computeCardDueDate } from 'utils/cardDueDate';
+const dueDate = computeCardDueDate(new Date('2026-08-20'), 6); // → timestamp de 2026-09-06
+```
+
+---
+
+
 ### `transactionLabels.ts`
 Constantes de labels e opções de seleção para o domínio de transações financeiras.
 

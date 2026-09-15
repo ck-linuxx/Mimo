@@ -14,6 +14,7 @@ import m0009 from './0009_bored_arclight.sql';
 import m0010 from './0010_goal_date_period.sql';
 import m0011 from './0011_goal_add_start_at.sql';
 import m0012 from './0012_drop_deadline.sql';
+import m0013 from './0013_due_date_integer.sql';
 
   export default {
     journal,
@@ -31,5 +32,6 @@ m0009,
 m0010,
 m0011,
 m0012,
+m0013,
     }
   }

@@ -101,6 +101,8 @@ export const transactions = sqliteTable('transactions', {
   amount: real('amount').notNull(),
   type: text('type', { enum: transactionTypes }).notNull(),
   date: integer('date').notNull(),
+  billingPeriod: text('billing_period'),
+  dueDate: integer('due_date'),
   paidAt: integer('paid_at'),
   status: text('status', { enum: transactionStatuses }).notNull().default('pending'),
   categoryId: text('category_id').references(() => categories.id),

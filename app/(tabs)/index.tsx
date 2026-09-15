@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { ScrollView, View, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors } from 'themes/colors';

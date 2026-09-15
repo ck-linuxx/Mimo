@@ -13,7 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { cards } from 'db/schema';
