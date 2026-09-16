@@ -17,6 +17,7 @@ import { useCards } from 'hooks/useCards';
 import { useTransactions } from 'hooks/useTransactions';
 import { useAccountBalance } from 'hooks/useAccountBalance';
 import { useAccountTransactionsPaginated } from 'hooks/transactions/useAccountTransactionsPaginated';
+import { useCardsPendingTotals } from 'hooks/transactions/useCardsPendingTotals';
 import { formatCurrency } from 'utils/formatCurrency';
 import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
@@ -102,7 +103,8 @@ export default function AccountDetailScreen() {
 
   const linkedCardIds = useMemo(() => linkedCards.map((c) => c.id), [linkedCards]);
 
-  // Lista paginada via DB — sem slice em memória
+  const { data: cardsPending, refetch: refetchCardsPending } = useCardsPendingTotals(linkedCardIds);
+
   const { data: txPage, totalCount: txPageTotal, loading: txPageLoading, refetch: refetchTxPage } =
     useAccountTransactionsPaginated(id ?? null, linkedCardIds, year, month, page, pageSize);
 
@@ -250,7 +252,8 @@ export default function AccountDetailScreen() {
   const handleTxChanged = useCallback(() => {
     refetchTx();
     refetchTxPage();
-  }, [refetchTx, refetchTxPage]);
+    refetchCardsPending();
+  }, [refetchTx, refetchTxPage, refetchCardsPending]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -373,7 +376,7 @@ export default function AccountDetailScreen() {
                 <LinkedCardSummary
                   key={card.id}
                   card={card}
-                  usedAmount={usedByCard.get(card.id) ?? 0}
+                  usedAmount={cardsPending.get(card.id) ?? 0}
                   onPress={() => router.push(`/cardDetail?id=${card.id}`)}
                 />
               ))

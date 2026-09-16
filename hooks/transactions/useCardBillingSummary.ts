@@ -4,12 +4,12 @@ import { and, eq, gte, lte, ne, sql } from 'drizzle-orm';
 import { transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 
-
-
 export interface CardBillingSummary {
   totalSpent: number;
   transactionCount: number;
 }
+
+export type BillingSummaryMode = 'cycle' | 'pending-total';
 
 interface UseCardBillingSummaryResult {
   data: CardBillingSummary;
@@ -18,16 +18,11 @@ interface UseCardBillingSummaryResult {
   refetch: () => void;
 }
 
-/**
- * Retorna o valor total gasto e quantidade de transações de um cartão
- * dentro de um ciclo de fatura específico.
- *
- * Considera despesas (expense) com status != cancelled.
- */
 export function useCardBillingSummary(
   cardId: string | null | undefined,
   cycleStartTs: number | null | undefined,
   cycleEndTs: number | null | undefined,
+  mode: BillingSummaryMode = 'cycle',
 ): UseCardBillingSummaryResult {
   const [data, setData] = useState<CardBillingSummary>({ totalSpent: 0, transactionCount: 0 });
   const [loading, setLoading] = useState(false);
@@ -37,7 +32,13 @@ export function useCardBillingSummary(
   const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
-    if (!cardId || cycleStartTs == null || cycleEndTs == null) {
+    if (!cardId) {
+      setData({ totalSpent: 0, transactionCount: 0 });
+      setLoading(false);
+      return;
+    }
+
+    if (mode === 'cycle' && (cycleStartTs == null || cycleEndTs == null)) {
       setData({ totalSpent: 0, transactionCount: 0 });
       setLoading(false);
       return;
@@ -46,21 +47,28 @@ export function useCardBillingSummary(
     setLoading(true);
     setError(null);
     try {
+      const whereClause =
+        mode === 'pending-total'
+          ? and(
+              eq(transactions.cardId, cardId),
+              eq(transactions.type, TransactionTypeEnum.Expense),
+              eq(transactions.status, TransactionStatusEnum.Pending),
+            )
+          : and(
+              eq(transactions.cardId, cardId),
+              eq(transactions.type, TransactionTypeEnum.Expense),
+              ne(transactions.status, TransactionStatusEnum.Cancelled),
+              gte(transactions.date, cycleStartTs!),
+              lte(transactions.date, cycleEndTs!),
+            );
+
       const row = db
         .select({
           total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
           count: sql<number>`COUNT(*)`,
         })
         .from(transactions)
-        .where(
-          and(
-            eq(transactions.cardId, cardId),
-            eq(transactions.type, TransactionTypeEnum.Expense),
-            ne(transactions.status, TransactionStatusEnum.Cancelled),
-            gte(transactions.date, cycleStartTs),
-            lte(transactions.date, cycleEndTs),
-          ),
-        )
+        .where(whereClause)
         .get();
 
       setData({
@@ -72,7 +80,7 @@ export function useCardBillingSummary(
     } finally {
       setLoading(false);
     }
-  }, [cardId, cycleStartTs, cycleEndTs, refreshKey]);
+  }, [cardId, cycleStartTs, cycleEndTs, mode, refreshKey]);
 
   return { data, loading, error, refetch };
 }

@@ -12,6 +12,7 @@ import { useCards } from 'hooks/useCards';
 import { useGoals } from 'hooks/useGoals';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { useExportData } from 'hooks/useExportData';
+import { useCardsPendingTotals } from 'hooks/transactions/useCardsPendingTotals';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import { CustomAlert } from 'components/CustomAlert';
 import { formatCurrency } from 'utils/formatCurrency';
@@ -291,7 +292,7 @@ function AccountCard({ item }: { item: Account }) {
 
 // ─── CreditCardItem ───────────────────────────────────────────────────────────
 
-function CreditCardItem({ item }: { item: Card }) {
+function CreditCardItem({ item, pendingAmount }: { item: Card; pendingAmount: number }) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
   const router = useRouter();
@@ -306,6 +307,17 @@ function CreditCardItem({ item }: { item: Card }) {
   const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, SPRING_BOUNCE);
   }, [scale]);
+
+  const availableLimit =
+    item.creditLimit != null ? Math.max(0, item.creditLimit - pendingAmount) : null;
+
+  const availableColor = (() => {
+    if (availableLimit == null || item.creditLimit == null || item.creditLimit <= 0) return colors.textSecondary;
+    const ratio = availableLimit / item.creditLimit;
+    if (ratio <= 0.10) return colors.expenseColor;
+    if (ratio <= 0.30) return '#F97316';
+    return colors.incomeColor;
+  })();
 
   return (
     <TouchableOpacity
@@ -335,10 +347,15 @@ function CreditCardItem({ item }: { item: Card }) {
             </Text>
           ) : null}
         </View>
-        {item.creditLimit != null ? (
-          <Text className="mr-2 text-sm font-bold" style={{ color: colors.textSecondary }}>
-            {formatCurrency(item.creditLimit)}
-          </Text>
+        {availableLimit != null ? (
+          <View className="items-end mr-2">
+            <Text className="text-sm font-bold" style={{ color: availableColor }}>
+              {formatCurrency(availableLimit)}
+            </Text>
+            <Text className="text-xs" style={{ color: colors.textSecondary }}>
+              disponível
+            </Text>
+          </View>
         ) : null}
         <Feather name="chevron-right" size={16} color={colors.disabled} />
       </Animated.View>
@@ -381,12 +398,16 @@ export default function SettingsScreen() {
   const { data: cardsData, loading: loadingCards, refetch: refetchCards } = useCards();
   const { data: goalsData, loading: loadingGoals, refetch: refetchGoals } = useGoals();
 
+  const cardIds = cardsData.map((c) => c.id);
+  const { data: cardsPending, refetch: refetchCardsPending } = useCardsPendingTotals(cardIds);
+
   useFocusEffect(
     useCallback(() => {
       refetchAccounts();
       refetchCards();
       refetchGoals();
-    }, [refetchAccounts, refetchCards, refetchGoals])
+      refetchCardsPending();
+    }, [refetchAccounts, refetchCards, refetchGoals, refetchCardsPending])
   );
 
   const [isExporting, setIsExporting] = useState(false);
@@ -650,7 +671,13 @@ export default function SettingsScreen() {
               </Text>
             </View>
           ) : (
-            cardsData.map((card) => <CreditCardItem key={card.id} item={card} />)
+            cardsData.map((card) => (
+              <CreditCardItem
+                key={card.id}
+                item={card}
+                pendingAmount={cardsPending.get(card.id) ?? 0}
+              />
+            ))
           )}
         </View>
 
