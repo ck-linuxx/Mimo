@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InteractionManager } from 'react-native';
 import { db } from 'db/client';
-import { and, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { categories, transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 import type { DonutChartDataItem } from 'components/charts/DonutChart';
@@ -49,10 +49,12 @@ export function useReportsExpenseCategoryTotals(
           .leftJoin(categories, eq(transactions.categoryId, categories.id))
           .where(
             and(
-              gte(transactions.date, startTs),
-              lte(transactions.date, endTs),
               eq(transactions.type, TransactionTypeEnum.Expense),
               ne(transactions.status, TransactionStatusEnum.Cancelled),
+              or(
+                and(isNull(transactions.cardId), gte(transactions.date, startTs), lte(transactions.date, endTs)),
+                and(isNotNull(transactions.cardId), gte(transactions.dueDate, startTs), lte(transactions.dueDate, endTs)),
+              ),
             ),
           )
           .groupBy(transactions.categoryId)

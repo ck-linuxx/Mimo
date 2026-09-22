@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InteractionManager } from 'react-native';
 import { db } from 'db/client';
-import { and, eq, gte, lte, ne, sql } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { categories, transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 
@@ -45,9 +45,11 @@ export function useReportsCashFlow(year: number, month: number) {
       const start = new Date(year, month, 1, 0, 0, 0, 0).getTime();
       const end = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime();
       const baseWhere = and(
-        gte(transactions.date, start),
-        lte(transactions.date, end),
         ne(transactions.status, TransactionStatusEnum.Cancelled),
+        or(
+          and(isNull(transactions.cardId), gte(transactions.date, start), lte(transactions.date, end)),
+          and(isNotNull(transactions.cardId), gte(transactions.dueDate, start), lte(transactions.dueDate, end)),
+        ),
       );
 
       // Total de receitas

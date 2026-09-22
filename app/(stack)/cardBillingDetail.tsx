@@ -19,36 +19,29 @@ export default function CardBillingDetailScreen() {
   const colors = theme === 'dark' ? darkColors : lightColors;
   const router = useRouter();
 
-  const { cardId, cycleStart, cycleEnd, cycleLabel, isClosed, creditLimit, cardColor } =
+  const { cardId, creditLimit, cardColor } =
     useLocalSearchParams<{
       cardId: string;
-      cycleStart: string;
-      cycleEnd: string;
-      cycleLabel: string;
-      isClosed?: string;
       creditLimit?: string;
       cardColor?: string;
     }>();
 
-  const cycleStartTs = cycleStart ? parseInt(cycleStart, 10) : null;
-  const cycleEndTs   = cycleEnd   ? parseInt(cycleEnd, 10)   : null;
-  const closed       = isClosed === 'true';
-  const limit        = creditLimit ? parseFloat(creditLimit) : null;
-  const accentColor  = cardColor ?? colors.primaryGold;
+  const limit       = creditLimit ? parseFloat(creditLimit) : null;
+  const accentColor = cardColor ?? colors.primaryGold;
 
   const { data: summary, loading: summaryLoading, refetch: refetchSummary } =
-    useCardBillingSummary(cardId, cycleStartTs, cycleEndTs);
+    useCardBillingSummary(cardId, null, null, 'pending-total');
 
   const [page, setPage]         = useState(0);
   const [pageSize, setPageSize] = useState(5);
 
   const { data: txList, totalCount: txTotal, loading: txLoading, refetch: refetchTx } =
-    useCardBillingTransactions(cardId, cycleStartTs, cycleEndTs, page, pageSize);
+    useCardBillingTransactions(cardId, null, null, page, pageSize, 'pending');
 
-  const totalSpent        = summary.totalSpent;
-  const availableLimit    = limit != null ? Math.max(0, limit - totalSpent) : null;
-  const usageRatio        = limit && limit > 0 ? Math.min(1, totalSpent / limit) : 0;
-  const isHighUsage       = usageRatio > 0.8;
+  const totalSpent     = summary.totalSpent;
+  const availableLimit = limit != null ? Math.max(0, limit - totalSpent) : null;
+  const usageRatio     = limit && limit > 0 ? Math.min(1, totalSpent / limit) : 0;
+  const isHighUsage    = usageRatio > 0.8;
 
   const handleRefetch = () => {
     refetchSummary();
@@ -57,11 +50,10 @@ export default function CardBillingDetailScreen() {
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.background }}>
-      {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />
         <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>
-          Detalhe da Fatura
+          Fatura em Aberto
         </Text>
         <View className="h-10 w-10" />
       </View>
@@ -70,37 +62,18 @@ export default function CardBillingDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 16 }}>
 
-        {/* Bloco: cabeçalho da fatura */}
         <InfoCard>
-          <View className="flex-row items-center justify-between mb-3">
-            <View className="flex-row items-center gap-2">
-              <View
-                className="w-9 h-9 rounded-xl items-center justify-center"
-                style={{ backgroundColor: accentColor + '25' }}>
-                <Feather name="file-text" size={16} color={accentColor} />
-              </View>
-              <Text className="text-base font-bold" style={{ color: colors.textPrimary }}>
-                {cycleLabel ?? '—'}
-              </Text>
-            </View>
-
-            {/* Badge de status */}
+          <View className="flex-row items-center gap-2 mb-3">
             <View
-              className="px-3 py-1 rounded-full"
-              style={{
-                backgroundColor: closed
-                  ? colors.expenseColor + '20'
-                  : colors.incomeColor + '20',
-              }}>
-              <Text
-                className="text-xs font-bold"
-                style={{ color: closed ? colors.expenseColor : colors.incomeColor }}>
-                {closed ? 'FECHADA' : 'ABERTA'}
-              </Text>
+              className="w-9 h-9 rounded-xl items-center justify-center"
+              style={{ backgroundColor: accentColor + '25' }}>
+              <Feather name="file-text" size={16} color={accentColor} />
             </View>
+            <Text className="text-base font-bold" style={{ color: colors.textPrimary }}>
+              Saldo pendente
+            </Text>
           </View>
 
-          {/* Total gasto */}
           {summaryLoading ? (
             <Skeleton height={36} borderRadius={8} />
           ) : (
@@ -111,10 +84,9 @@ export default function CardBillingDetailScreen() {
             </Text>
           )}
           <Text className="text-xs mb-4" style={{ color: colors.textSecondary }}>
-            {summary.transactionCount} transação(ões) nesta fatura
+            {summary.transactionCount} despesa{summary.transactionCount !== 1 ? 's' : ''} pendente{summary.transactionCount !== 1 ? 's' : ''}
           </Text>
 
-          {/* Barra de progresso de limite */}
           {limit != null && limit > 0 && (
             <>
               <View className="flex-row justify-between mb-1.5">
@@ -156,12 +128,11 @@ export default function CardBillingDetailScreen() {
           )}
         </InfoCard>
 
-        {/* Bloco: lista de transações */}
         <View>
           <Text
             className="text-base font-bold mb-3"
             style={{ color: colors.textPrimary }}>
-            Transações
+            Despesas Pendentes
           </Text>
           <PaginatedList
             data={txList}
@@ -173,7 +144,7 @@ export default function CardBillingDetailScreen() {
             isLoading={txLoading}
             pageSizeOptions={[5, 10, 20]}
             emptyIcon="credit-card"
-            emptyText="Nenhuma transação nesta fatura"
+            emptyText="Nenhuma despesa pendente"
             renderItem={(tx) => (
               <TransactionItem
                 transaction={tx}

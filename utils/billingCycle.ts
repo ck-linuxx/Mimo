@@ -45,35 +45,45 @@ export function getCurrentBillingCycle(
   const y = now.getFullYear();
 
   let startY: number, startM: number;
-  let endY: number, endM: number;
+  let nextCycleY: number, nextCycleM: number;
 
   if (d < closingDay) {
-    // Antes do fechamento deste mês → ciclo veio do mês anterior
+    // Antes do fechamento deste mês → ciclo começou no mês anterior
     if (m === 0) { startY = y - 1; startM = 11; }
     else { startY = y; startM = m - 1; }
-    endY = y; endM = m;
+    nextCycleY = y; nextCycleM = m;
   } else {
     // Já passamos do fechamento → novo ciclo começou neste mês
     startY = y; startM = m;
-    if (m === 11) { endY = y + 1; endM = 0; }
-    else { endY = y; endM = m + 1; }
+    if (m === 11) { nextCycleY = y + 1; nextCycleM = 0; }
+    else { nextCycleY = y; nextCycleM = m + 1; }
   }
 
-  // Trata overflow do dia (ex: dia 31 em fevereiro)
+  // Trata overflow do dia no início do ciclo (ex: dia 31 em fevereiro)
   const effectiveStartDay = Math.min(
     closingDay,
     new Date(startY, startM + 1, 0).getDate(),
   );
-  const effectiveEndDay = Math.min(
-    closingDay,
-    new Date(endY, endM + 1, 0).getDate(),
-  );
 
-  const startTs = new Date(startY, startM, effectiveStartDay, 0, 0, 0, 0).getTime();
-  const endTs   = new Date(endY, endM, effectiveEndDay, 23, 59, 59, 999).getTime();
+  // Início do ciclo: dia de fechamento às 00:00:00.000
+  const startDate = new Date(startY, startM, effectiveStartDay, 0, 0, 0, 0);
+
+  // Início do PRÓXIMO ciclo
+  const effectiveNextDay = Math.min(
+    closingDay,
+    new Date(nextCycleY, nextCycleM + 1, 0).getDate(),
+  );
+  const nextCycleStartDate = new Date(nextCycleY, nextCycleM, effectiveNextDay, 0, 0, 0, 0);
+
+  // Fim do ciclo atual: 1ms antes do próximo ciclo (ou seja, 23:59:59.999 do dia anterior)
+  const endDate = new Date(nextCycleStartDate.getTime() - 1);
+
+  const startTs = startDate.getTime();
+  const endTs = endDate.getTime();
   const isClosed = now.getTime() > endTs;
 
-  const label = `${effectiveStartDay} ${MONTH_SHORT[startM]} – ${effectiveEndDay} ${MONTH_SHORT[endM]}`;
+  // Formata o label com a data real de término (ex: "06 Ago – 05 Set")
+  const label = `${startDate.getDate()} ${MONTH_SHORT[startDate.getMonth()]} – ${endDate.getDate()} ${MONTH_SHORT[endDate.getMonth()]}`;
 
   return { startTs, endTs, label, isClosed };
 }

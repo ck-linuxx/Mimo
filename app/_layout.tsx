@@ -1,22 +1,21 @@
 import { AppState, AppStateStatus, Text, View } from 'react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
-import * as SQLite from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Feather } from '@expo/vector-icons';
 
 import migrations from 'drizzle/migrations';
-import { db } from 'db/client';
+import { db, expo } from 'db/client';
+import { runMigrationsSync } from 'utils/runMigrations';
 import { seedDefaultCategories } from 'utils/seedCategories';
 import { Loading } from 'components/Loading';
 import { AppButton } from 'components/AppButton';
 import { ThemeProvider, darkColors, lightColors, useTheme } from 'themes';
 import { useSettings } from 'hooks/useSettings';
 import '../global.css';
+
 
 function AppNavigator() {
   const { theme } = useTheme();
@@ -131,11 +130,51 @@ function BiometricGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const { success, error } = useMigrations(db, migrations);
+  const [migrationState, setMigrationState] = useState<{ success: boolean; error?: Error }>({
+    success: false,
+  });
   const [dbReady, setDbReady] = useState(false);
+
+  // Roda migrations ao montar usando expo.execSync em vez do session.run() do Drizzle.
+  // O session.run() do Drizzle não finaliza os statements, causando SIGSEGV quando
+  // expo-sqlite recebe SQL vazio/comentário (sqlite3_prepare_v2 retorna NULL stmt).
+  useEffect(() => {
+    try {
+      runMigrationsSync(expo, migrations);
+      setMigrationState({ success: true });
+    } catch (err) {
+      setMigrationState({ success: false, error: err as Error });
+    }
+  }, []);
+
+  const { success, error } = migrationState;
 
   useEffect(() => {
     if (!success) return;
+
+    // Pre-migration fix: garante que `start_at` e `finish_at` existam em financial_goals
+    // e preenche metas sem datas com Jan/Dez 2026 como valor padrão.
+    // Cobre usuários que vieram de versões antigas com schema inconsistente.
+    try {
+      const goalCols = expo.getAllSync<{ name: string }>(`PRAGMA table_info(financial_goals)`);
+      const hasGoal = (n: string) => goalCols.some((c) => c.name === n);
+
+      const START_2026 = new Date(2026, 0, 1, 0, 0, 0, 0).getTime();
+      const END_2026 = new Date(2026, 11, 31, 23, 59, 59, 999).getTime();
+
+      if (!hasGoal('start_at')) {
+        expo.execSync(`ALTER TABLE financial_goals ADD COLUMN start_at INTEGER`);
+      }
+      expo.execSync(`UPDATE financial_goals SET start_at = ${START_2026} WHERE start_at IS NULL`);
+
+      if (!hasGoal('finish_at')) {
+        expo.execSync(`ALTER TABLE financial_goals ADD COLUMN finish_at INTEGER`);
+      }
+      expo.execSync(`UPDATE financial_goals SET finish_at = ${END_2026} WHERE finish_at IS NULL`);
+    } catch (_) {
+      // tabela ainda não existe (instalação nova) — sem ação necessária
+    }
+
     seedDefaultCategories(db).then(() => setDbReady(true));
   }, [success]);
 

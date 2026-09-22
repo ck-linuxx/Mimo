@@ -4,11 +4,13 @@
     "tlc-spec-driven": {
       "name": "tlc-spec-driven",
       "source": "local",
-      "contentHash": "69867b0e19be1fb556d2e697f0f18f1de0363d1aa2de9d36754d5b107156357c",
+      "contentHash": "9f4c793556001f3210a2d9fe3b41bf24e82e581c522d8dd50f65addfee169a29",
       "installedAt": "2026-05-18T00:47:07.974Z",
-      "updatedAt": "2026-05-18T00:47:07.992Z",
+      "updatedAt": "2026-08-16T22:44:28.038Z",
       "agents": [
-        "claude-code"
+        "claude-code",
+        "cursor",
+        "windsurf"
       ],
       "method": "copy",
       "global": false

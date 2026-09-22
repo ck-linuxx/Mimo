@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { db } from 'db/client';
 import { eq } from 'drizzle-orm';

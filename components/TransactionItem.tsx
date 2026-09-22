@@ -27,6 +27,8 @@ interface TransactionItemProps {
   onStatusChanged?: () => void;
   /** Quando true, exibe o modal de comprovante ao marcar como pago. @default true */
   askForReceipt?: boolean;
+  /** Quando presente, exibe chip de fatura (ex: "Fatura: Set/26") abaixo da categoria */
+  dueDateLabel?: string;
 }
 
 export function TransactionItem({
@@ -36,6 +38,7 @@ export function TransactionItem({
   showTime = false,
   onStatusChanged,
   askForReceipt = true,
+  dueDateLabel,
 }: TransactionItemProps) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
@@ -230,6 +233,31 @@ export function TransactionItem({
                 {(variant === 'card' || variant === 'flat') &&
                   ` · ${new Date(transaction.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`}
               </Text>
+
+              {/* Chip de fatura (dueDate em outro mês) */}
+              {dueDateLabel && (
+                <View
+                  className="bg-light-icon-background dark:bg-dark-icon-background"
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    paddingHorizontal: 7,
+                    paddingVertical: 3,
+                    borderRadius: 999,
+                    marginTop: 4,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  <Feather name="credit-card" size={10} color={colors.textSecondary} />
+                  <Text
+                    className="text-light-text-secondary dark:text-dark-text-secondary"
+                    style={{ fontSize: 11 }}
+                  >
+                    {dueDateLabel}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 

@@ -13,7 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { cards } from 'db/schema';
@@ -32,13 +32,11 @@ import { useCardTransactionsPaginated } from 'hooks/transactions/useCardTransact
 import { useCardCategoryTotals } from 'hooks/transactions/useCardCategoryTotals';
 import { useCardMonthlyTotals } from 'hooks/transactions/useCardMonthlyTotals';
 import { formatCurrency } from 'utils/formatCurrency';
-import { getCurrentBillingCycle } from 'utils/billingCycle';
 import type { Card } from 'types';
 
 // ─── Spring constants ─────────────────────────────────────────────────────────
 
 const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
-
 
 // ─── Opções de meses disponíveis no seletor ───────────────────────────────────
 
@@ -125,22 +123,14 @@ export default function CardDetailScreen() {
 
   useEffect(() => { loadCard(); }, [loadCard]);
 
-  // ─── Ciclo de fatura ───────────────────────────────────────────────────────
-
-  const billingCycle = useMemo(
-    () => (card ? getCurrentBillingCycle(card.closingDay) : null),
-    [card],
-  );
-
-  // ─── Fatura: resumo ────────────────────────────────────────────────────────
+  // ─── Saldo em aberto: todas as despesas pendentes do cartão ───────────────
 
   const {
     data: billingSummary,
     loading: billingLoading,
     refetch: refetchBilling,
-  } = useCardBillingSummary(id, billingCycle?.startTs, billingCycle?.endTs);
+  } = useCardBillingSummary(id, null, null, 'pending-total');
 
-  // Refetch fatura ao voltar da tela de detalhes
   useFocusEffect(
     useCallback(() => {
       refetchBilling();
@@ -173,6 +163,7 @@ export default function CardDetailScreen() {
   const availableLimit  = creditLimit != null ? Math.max(0, creditLimit - totalSpent) : null;
   const usageRatio      = creditLimit && creditLimit > 0 ? Math.min(1, totalSpent / creditLimit) : 0;
   const isHighUsage     = usageRatio > 0.8;
+  const pendingCount    = billingSummary.transactionCount;
 
   const barSeries = useMemo(
     () => [{ name: 'Gastos', data: monthlyData.map((m) => m.value), color: accentColor }],
@@ -258,139 +249,101 @@ export default function CardDetailScreen() {
           </View>
         </InfoCard>
 
-        {/* ── Bloco 2: Fatura atual ───────────────────────────────────── */}
-        {billingCycle ? (
-          <InfoCard>
-            {/* Cabeçalho da fatura */}
-            <View className="flex-row items-center justify-between mb-4">
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-9 h-9 rounded-xl items-center justify-center"
-                  style={{ backgroundColor: accentColor + '20' }}>
-                  <Feather name="file-text" size={16} color={accentColor} />
-                </View>
-                <View>
-                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                    Fatura atual
-                  </Text>
-                  <Text
-                    className="text-sm font-semibold"
-                    style={{ color: colors.textPrimary }}>
-                    {billingCycle.label}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Badge status aberta/fechada */}
-              <View
-                className="px-3 py-1 rounded-full"
-                style={{
-                  backgroundColor: billingCycle.isClosed
-                    ? colors.expenseColor + '20'
-                    : colors.incomeColor + '20',
-                }}>
-                <Text
-                  className="text-xs font-bold"
-                  style={{
-                    color: billingCycle.isClosed
-                      ? colors.expenseColor
-                      : colors.incomeColor,
-                  }}>
-                  {billingCycle.isClosed ? 'FECHADA' : 'ABERTA'}
-                </Text>
-              </View>
+        {/* ── Bloco 2: Saldo em aberto ────────────────────────────────── */}
+        <InfoCard>
+          {/* Cabeçalho */}
+          <View className="flex-row items-center gap-2 mb-4">
+            <View
+              className="w-9 h-9 rounded-xl items-center justify-center"
+              style={{ backgroundColor: accentColor + '20' }}>
+              <Feather name="file-text" size={16} color={accentColor} />
             </View>
-
-            {/* Total gasto */}
-            {billingLoading ? (
-              <Skeleton height={40} borderRadius={8} style={{ marginBottom: 4 }} />
-            ) : (
+            <View>
+              <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                Saldo em aberto
+              </Text>
               <Text
-                className="text-3xl font-bold mb-1"
+                className="text-sm font-semibold"
                 style={{ color: colors.textPrimary }}>
-                {formatCurrency(totalSpent)}
-              </Text>
-            )}
-            <Text className="text-xs mb-4" style={{ color: colors.textSecondary }}>
-              {billingSummary.transactionCount} transação(ões) nesta fatura
-            </Text>
-
-            {/* Barra de progresso do limite */}
-            {creditLimit != null && creditLimit > 0 && (
-              <>
-                <View className="flex-row justify-between mb-1.5">
-                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                    Utilizado:{' '}
-                    <Text
-                      className="font-semibold"
-                      style={{ color: isHighUsage ? colors.expenseColor : colors.textPrimary }}>
-                      {formatCurrency(totalSpent)}
-                    </Text>
-                  </Text>
-                  <Text className="text-xs" style={{ color: colors.textSecondary }}>
-                    Disponível:{' '}
-                    <Text className="font-semibold" style={{ color: colors.incomeColor }}>
-                      {formatCurrency(availableLimit ?? 0)}
-                    </Text>
-                  </Text>
-                </View>
-                <View
-                  className="h-2 rounded-full overflow-hidden mb-1.5"
-                  style={{ backgroundColor: colors.borderColor }}>
-                  <View
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${usageRatio * 100}%`,
-                      backgroundColor: isHighUsage ? colors.expenseColor : accentColor,
-                    }}
-                  />
-                </View>
-                <Text className="text-xs mb-4" style={{ color: colors.textSecondary }}>
-                  {Math.round(usageRatio * 100)}% do limite utilizado
-                </Text>
-              </>
-            )}
-
-            {/* CTA: Ver detalhes */}
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() =>
-                router.push({
-                  pathname: '/(stack)/cardBillingDetail',
-                  params: {
-                    cardId: id,
-                    cycleStart: String(billingCycle.startTs),
-                    cycleEnd: String(billingCycle.endTs),
-                    cycleLabel: billingCycle.label,
-                    isClosed: String(billingCycle.isClosed),
-                    creditLimit: creditLimit != null ? String(creditLimit) : '',
-                    cardColor: card.color ?? '',
-                  },
-                })
-              }
-              className="flex-row items-center justify-center gap-2 rounded-xl py-3"
-              style={{ backgroundColor: accentColor + '18' }}>
-              <Feather name="list" size={15} color={accentColor} />
-              <Text className="text-sm font-semibold" style={{ color: accentColor }}>
-                Ver detalhes da fatura
-              </Text>
-            </TouchableOpacity>
-          </InfoCard>
-        ) : (
-          /* Sem closingDay: aviso informativo */
-          <InfoCard>
-            <View className="flex-row items-center gap-3">
-              <View
-                className="w-9 h-9 rounded-xl items-center justify-center"
-                style={{ backgroundColor: colors.primaryGold + '20' }}>
-                <Feather name="info" size={15} color={colors.primaryGold} />
-              </View>
-              <Text className="text-sm flex-1" style={{ color: colors.textSecondary }}>
-                Configure o dia de fechamento para visualizar a fatura atual.
+                Todas as despesas pendentes
               </Text>
             </View>
-          </InfoCard>
-        )}
+          </View>
+
+          {/* Total pendente */}
+          {billingLoading ? (
+            <Skeleton height={40} borderRadius={8} style={{ marginBottom: 4 }} />
+          ) : (
+            <Text
+              className="text-3xl font-bold mb-1"
+              style={{ color: colors.textPrimary }}>
+              {formatCurrency(totalSpent)}
+            </Text>
+          )}
+          <Text className="text-xs mb-4" style={{ color: colors.textSecondary }}>
+            {pendingCount} despesa{pendingCount !== 1 ? 's' : ''} pendente
+            {pendingCount !== 1 ? 's' : ''}
+          </Text>
+
+          {/* Barra de progresso do limite */}
+          {creditLimit != null && creditLimit > 0 && (
+            <>
+              <View className="flex-row justify-between mb-1.5">
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                  Utilizado:{' '}
+                  <Text
+                    className="font-semibold"
+                    style={{ color: isHighUsage ? colors.expenseColor : colors.textPrimary }}>
+                    {formatCurrency(totalSpent)}
+                  </Text>
+                </Text>
+                <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                  Disponível:{' '}
+                  <Text className="font-semibold" style={{ color: colors.incomeColor }}>
+                    {formatCurrency(availableLimit ?? 0)}
+                  </Text>
+                </Text>
+              </View>
+
+              <View
+                className="h-2 rounded-full overflow-hidden mb-1.5"
+                style={{ backgroundColor: colors.borderColor }}>
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${usageRatio * 100}%`,
+                    backgroundColor: isHighUsage ? colors.expenseColor : accentColor,
+                  }}
+                />
+              </View>
+
+              <Text className="text-xs mb-4" style={{ color: colors.textSecondary }}>
+                {Math.round(usageRatio * 100)}% do limite utilizado
+              </Text>
+            </>
+          )}
+
+          {/* CTA: Ver fatura em aberto */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() =>
+              router.push({
+                pathname: '/(stack)/cardBillingDetail',
+                params: {
+                  cardId: id,
+                  creditLimit: creditLimit != null ? String(creditLimit) : '',
+                  cardColor: card.color ?? '',
+                },
+              })
+            }
+            className="flex-row items-center justify-center gap-2 rounded-xl py-3"
+            style={{ backgroundColor: accentColor + '18' }}>
+            <Feather name="list" size={15} color={accentColor} />
+            <Text className="text-sm font-semibold" style={{ color: accentColor }}>
+              Ver fatura em aberto
+            </Text>
+          </TouchableOpacity>
+        </InfoCard>
 
         {/* ── Bloco 3: Informações compactas do cartão ────────────────── */}
         {(card.creditLimit != null || card.closingDay != null || card.dueDay != null) && (
@@ -533,6 +486,7 @@ export default function CardDetailScreen() {
             emptySubtext="As transações vinculadas a este cartão aparecerão aqui"
             renderItem={(tx) => (
               <TransactionItem
+                key={tx.id}
                 transaction={tx}
                 variant="flat"
                 onStatusChanged={refetchHist}

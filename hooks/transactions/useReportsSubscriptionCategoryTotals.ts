@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InteractionManager } from 'react-native';
 import { db } from 'db/client';
-import { and, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { categories, transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 import type { DonutChartDataItem } from 'components/charts/DonutChart';
@@ -58,6 +58,7 @@ export function useReportsSubscriptionCategoryTotals(
               eq(transactions.type, TransactionTypeEnum.Expense),
               eq(transactions.isSubscription, true),
               ne(transactions.status, TransactionStatusEnum.Cancelled),
+              or(isNull(transactions.cardId), ne(transactions.status, TransactionStatusEnum.Pending)),
             ),
           )
           .groupBy(transactions.categoryId)

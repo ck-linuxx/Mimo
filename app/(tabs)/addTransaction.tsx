@@ -36,6 +36,7 @@ import {
   FREQUENCY_OPTIONS,
   PAYMENT_TYPE_OPTIONS,
 } from 'utils/transactionLabels';
+import { computeCardDueDate } from 'utils/cardDueDate';
 
 // ─── Schema ────────────────────────────────────────────────────────────────────
 
@@ -154,12 +155,17 @@ export default function AddTransaction() {
         const paidAt = value.status === TransactionStatusEnum.Paid ? now : null;
 
         if (value.paymentType === 'single') {
+          const dueDate = selectedCard
+            ? computeCardDueDate(value.date, selectedCard.closingDay)
+            : value.date.getTime();
+
           await db.insert(transactions).values({
             id: generateId(),
             description: value.description,
             amount: value.amount,
             type: value.type,
             date: value.date.getTime(),
+            dueDate,
             status: value.status,
             paidAt,
             categoryId: value.categoryId || null,
@@ -209,12 +215,16 @@ export default function AddTransaction() {
             for (let i = 1; i <= value.installments; i++) {
               const installDate = new Date(value.date);
               installDate.setMonth(installDate.getMonth() + (i - 1));
+              const installDueDate = selectedCard
+                ? computeCardDueDate(installDate, selectedCard.closingDay)
+                : installDate.getTime();
               tx.insert(transactions).values({
                 id: generateId(),
                 description: value.description,
                 amount: installmentAmount,
                 type: value.type,
                 date: installDate.getTime(),
+                dueDate: installDueDate,
                 status: i === 1 ? value.status : TransactionStatusEnum.Pending,
                 paidAt: i === 1 ? paidAt : null,
                 categoryId: value.categoryId || null,
@@ -261,12 +271,16 @@ export default function AddTransaction() {
 
             for (let i = 0; i < 12; i++) {
               const recurringDate = addByFrequency(value.date, value.frequency as FrequencyEnum, i);
+              const recurringDueDate = selectedCard
+                ? computeCardDueDate(recurringDate, selectedCard.closingDay)
+                : recurringDate.getTime();
               tx.insert(transactions).values({
                 id: generateId(),
                 description: value.description,
                 amount: value.amount,
                 type: value.type,
                 date: recurringDate.getTime(),
+                dueDate: recurringDueDate,
                 status: i === 0 ? value.status : TransactionStatusEnum.Pending,
                 paidAt: i === 0 ? paidAt : null,
                 categoryId: value.categoryId || null,

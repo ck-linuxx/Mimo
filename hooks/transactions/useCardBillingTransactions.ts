@@ -5,7 +5,7 @@ import { categories, transactionGroups, transactions } from 'db/schema';
 import { TransactionStatusEnum } from 'types';
 import type { TransactionWithCategory } from 'types/transactionView';
 
-
+export type BillingTransactionsMode = 'cycle' | 'pending';
 
 interface UseCardBillingTransactionsResult {
   data: TransactionWithCategory[];
@@ -15,17 +15,13 @@ interface UseCardBillingTransactionsResult {
   refetch: () => void;
 }
 
-/**
- * Retorna transações paginadas de um cartão dentro de um ciclo de fatura específico,
- * excluindo canceladas, ordenadas por data decrescente, com JOIN de categorias e grupos.
- * Paginação real via Drizzle limit/offset — sem slice em memória.
- */
 export function useCardBillingTransactions(
   cardId: string | null | undefined,
   cycleStartTs: number | null | undefined,
   cycleEndTs: number | null | undefined,
   page: number,
   pageSize: number,
+  mode: BillingTransactionsMode = 'cycle',
 ): UseCardBillingTransactionsResult {
   const [data, setData] = useState<TransactionWithCategory[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -36,7 +32,14 @@ export function useCardBillingTransactions(
   const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
-    if (!cardId || cycleStartTs == null || cycleEndTs == null) {
+    if (!cardId) {
+      setData([]);
+      setTotalCount(0);
+      setLoading(false);
+      return;
+    }
+
+    if (mode === 'cycle' && (cycleStartTs == null || cycleEndTs == null)) {
       setData([]);
       setTotalCount(0);
       setLoading(false);
@@ -46,14 +49,19 @@ export function useCardBillingTransactions(
     setLoading(true);
     setError(null);
     try {
-      const baseWhere = and(
-        eq(transactions.cardId, cardId),
-        ne(transactions.status, TransactionStatusEnum.Cancelled),
-        gte(transactions.date, cycleStartTs),
-        lte(transactions.date, cycleEndTs),
-      );
+      const baseWhere =
+        mode === 'pending'
+          ? and(
+              eq(transactions.cardId, cardId),
+              eq(transactions.status, TransactionStatusEnum.Pending),
+            )
+          : and(
+              eq(transactions.cardId, cardId),
+              ne(transactions.status, TransactionStatusEnum.Cancelled),
+              gte(transactions.date, cycleStartTs!),
+              lte(transactions.date, cycleEndTs!),
+            );
 
-      // COUNT: somente o total — sem JOIN, sem campos extras
       const countRow = db
         .select({ count: sql<number>`COUNT(*)` })
         .from(transactions)
@@ -62,7 +70,6 @@ export function useCardBillingTransactions(
 
       setTotalCount(countRow?.count ?? 0);
 
-      // DATA: página paginada via limit/offset
       const rows = db
         .select()
         .from(transactions)
@@ -86,7 +93,7 @@ export function useCardBillingTransactions(
     } finally {
       setLoading(false);
     }
-  }, [cardId, cycleStartTs, cycleEndTs, page, pageSize, refreshKey]);
+  }, [cardId, cycleStartTs, cycleEndTs, page, pageSize, mode, refreshKey]);
 
   return { data, totalCount, loading, error, refetch };
 }

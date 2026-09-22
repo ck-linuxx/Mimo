@@ -92,6 +92,13 @@
       "when": 1750032000000,
       "tag": "0012_drop_deadline",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1756425600000,
+      "tag": "0013_due_date_integer",
+      "breakpoints": true
     }
   ]
 }

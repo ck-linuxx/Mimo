@@ -5,7 +5,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -81,7 +81,6 @@ export default function ReportsScreen() {
   const { data: expenseByCard, loading: loadingExpenseByCard, refetch: refetchExpenseByCard } = useReportsExpenseByCard(selectedYear, selectedMonth);
 
   // Skeleton só no primeiro carregamento — trocas de mês mantêm o chart visível
-  const isBudgetFirstLoad = useIsFirstLoad(loadingBudget);
   const isLast3FirstLoad = useIsFirstLoad(loadingLast3);
   const isProvisionFirstLoad = useIsFirstLoad(loadingProvision);
   const isCategoryFirstLoad = useIsFirstLoad(loadingExpenseByCategory);
@@ -377,24 +376,6 @@ export default function ReportsScreen() {
               </Text>
             </View>
           ))}
-        </View>
-
-        {/* ── Gauge: Saúde do Orçamento ─────────────────────────────────────── */}
-        <View>
-          <SectionHeader
-            title="Saúde do Orçamento"
-            icon="activity"
-            description="Velocímetro do comprometimento da sua receita. Verde (< 70%): saudável. Âmbar (70–90%): atenção. Vermelho (≥ 90%): orçamento crítico."
-          />
-          {isBudgetFirstLoad ? (
-            <Skeleton height={340} borderRadius={14} />
-          ) : (
-            <BudgetGaugeChart
-              spent={budget.spent}
-              income={budget.income}
-              percent={budget.percent}
-            />
-          )}
         </View>
 
         {/* ── Bar: Receita vs Despesas (últimos 3 meses) ────────────────────── */}

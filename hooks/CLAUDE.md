@@ -226,15 +226,33 @@ Consulta `financial_goals` onde `status = GoalStatusEnum.Active`.
 ---
 
 ### `useTransactions.ts`
-Query de transações por ano/mês com LEFT JOIN em categorias e grupos.
+Query de transações por ano/mês. Executa duas queries SQLite por chamada.
 
 **Assinatura:** `useTransactions(year: number, month: number)`
 
-**Retorno:** `{ data: TransactionWithCategory[], loading, error, refetch }`
+**Retorno:** `{ data: TransactionWithCategory[], cardBillingData: CardBillingGroup[], loading, error, refetch }`
 
-- Filtra por intervalo de timestamp no campo `date` (início/fim do mês)
+**Query 1 — listagem por `date`:**
+- Filtra transações com `date` no mês exibido (comportamento original)
+- LEFT JOIN em `categories` e `transactionGroups`
 - Ordena por `desc(transactions.date)`
-- Inclui `category` (nullable) e `group` (nullable) via LEFT JOIN
+
+**Query 2 — fatura por `dueDate`:**
+- Filtra `cardId IS NOT NULL`, `dueDate >= monthStart`, `dueDate <= monthEnd`
+- E `date < monthStart OR date > monthEnd` (compra em outro mês)
+- LEFT JOIN em `categories`, `transactionGroups` e `cards` (para `name` e `color`)
+- Agrupa o resultado em `CardBillingGroup[]` por `cardId`
+
+**Interface exportada:**
+```ts
+export interface CardBillingGroup {
+  cardId: string;
+  cardName: string;
+  cardColor: string | null;
+  transactions: TransactionWithCategory[];
+  total: number; // soma dos amounts do grupo
+}
+```
 
 ---
 

@@ -663,10 +663,65 @@ Item de transação com swipe para marcar pago/pendente.
 **Props:**
 - `transaction: TransactionWithCategory`
 - `onPress?: () => void` — se omitido, abre `TransacaoDetalhesModal`
-- `variant?: 'card' | 'simple'` — padrão `'card'`; `simple` remove bordas e padding de card
+- `variant?: 'card' | 'simple' | 'flat'` — padrão `'card'`; `simple` remove bordas e padding de card
 - `showTime?: boolean`
 - `onStatusChanged?: () => void` — chamado após toggle de status (ex: refetch da lista)
+- `askForReceipt?: boolean` — padrão `true`; abre `ReceiptModal` ao marcar como pago
+- `dueDateLabel?: string` — quando presente, exibe chip de fatura (ex: `"Fatura: Set/26"`) abaixo da linha de categoria. Chip com ícone `credit-card`, fundo `iconBackground`, `fontSize: 11`, `borderRadius: 999`.
 
 **Swipe direito:** botão pago/pendente. Ao marcar como pago, abre `ReceiptModal` automaticamente.
 
 **Editar:** botão de lápis → `EscopoEdicaoModal` → navega para `/(stack)/editTransaction` com todos os parâmetros da transação.
+
+---
+
+### `Accordion.tsx`
+
+Componente genérico de accordion animado, sem lógica de domínio financeiro.
+
+**Props:**
+```ts
+interface AccordionProps {
+  title: string;
+  subtitle?: string;
+  accentColor?: string;   // cor do ícone e do fundo do ícone (default: primaryGold)
+  icon?: string;          // nome de ícone Feather
+  children: ReactNode;
+  defaultOpen?: boolean;  // padrão: false
+}
+```
+
+**Animação:**
+- Altura do corpo: `useSharedValue` + `withSpring(SPRING_MODAL)` (`damping: 55, stiffness: 700`)
+- Chevron: rotação 0°↔180° via `withSpring(SPRING_BOUNCE)` (`damping: 5, stiffness: 550, mass: 0.35`)
+
+**Theming:** exclusivamente via NativeWind tokens; `style={{}}` apenas para `color` do Feather e `accentColor` dinâmica.
+
+**Regra:** sem lógica de domínio financeiro — qualquer tela pode reutilizá-lo.
+
+---
+
+### `CardBillingAccordion.tsx`
+
+Wrapper de fatura de cartão que usa `Accordion` internamente para exibir transações agrupadas por mês de vencimento.
+
+**Props:**
+```ts
+interface CardBillingAccordionProps {
+  group: CardBillingGroup;    // importado de hooks/useTransactions
+  currentMonth: number;       // 0-indexed
+  currentYear: number;
+  onStatusChanged: () => void;
+  askForReceipt: boolean;
+}
+```
+
+**Comportamento:**
+- Renderiza `<Accordion title={cardName} subtitle="Fatura Mmm/AA" accentColor={cardColor} icon="credit-card">`
+- Transações agrupadas por `date` (data real da compra) internamente
+- Cada transação renderizada com `TransactionItem variant="simple"`
+- Aviso com `Feather name="info"` e nome do mês seguinte calculado dinamicamente
+- Total da fatura no rodapé com `formatCurrency`
+
+**Dependências internas:** `Accordion`, `TransactionItem`, `formatCurrency`
+

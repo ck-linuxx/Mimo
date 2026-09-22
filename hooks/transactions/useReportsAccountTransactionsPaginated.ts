@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from 'db/client';
-import { and, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { categories, transactionGroups, transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 import type { TransactionWithCategory } from 'types/transactionView';
@@ -48,6 +48,7 @@ export function useReportsAccountTransactionsPaginated(
         eq(transactions.accountId, accountId),
         eq(transactions.type, TransactionTypeEnum.Expense),
         ne(transactions.status, TransactionStatusEnum.Cancelled),
+        or(isNull(transactions.cardId), ne(transactions.status, TransactionStatusEnum.Pending)),
         gte(transactions.date, monthStartTs),
         lte(transactions.date, monthEndTs),
       );
