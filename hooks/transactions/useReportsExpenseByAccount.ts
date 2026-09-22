@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InteractionManager } from 'react-native';
 import { db } from 'db/client';
-import { and, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { accounts, transactions } from 'db/schema';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 
@@ -52,10 +52,12 @@ export function useReportsExpenseByAccount(
           .where(
             and(
               eq(accounts.isActive, true),
-              gte(transactions.date, startTs),
-              lte(transactions.date, endTs),
               eq(transactions.type, TransactionTypeEnum.Expense),
               ne(transactions.status, TransactionStatusEnum.Cancelled),
+              or(
+                and(isNull(transactions.cardId), gte(transactions.date, startTs), lte(transactions.date, endTs)),
+                and(isNotNull(transactions.cardId), gte(transactions.dueDate, startTs), lte(transactions.dueDate, endTs)),
+              ),
             ),
           )
           .groupBy(accounts.id)

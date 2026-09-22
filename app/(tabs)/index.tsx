@@ -35,7 +35,7 @@ export default function HomeScreen() {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  const { balance, loading: loadingBalance, refetch: refetchBalance } = useTotalBalance();
+  const { balance: totalAccountBalance, loading: loadingBalance, refetch: refetchBalance } = useTotalBalance();
   const { data: monthlyTransactions, loading: loadingMonthly, refetch: refetchMonthly } = useTransactions(
     currentYear,
     currentMonth,
@@ -47,7 +47,6 @@ export default function HomeScreen() {
     refetch: refetchPending,
   } = usePendingTransactions(pendingPageSize, pendingPage * pendingPageSize);
 
-  // ─── Atualiza dados ao focar na tela ──────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
       refetchBalance();
@@ -62,6 +61,7 @@ export default function HomeScreen() {
     let despesas = 0;
     for (const t of monthlyTransactions) {
       if (t.status === TransactionStatusEnum.Cancelled) continue;
+      if (t.cardId != null && t.status === TransactionStatusEnum.Pending) continue;
       if (t.type === TransactionTypeEnum.Income) {
         receitas += t.amount;
       } else {
@@ -78,6 +78,7 @@ export default function HomeScreen() {
       if (t.type !== TransactionTypeEnum.Expense || t.status === TransactionStatusEnum.Cancelled) {
         continue;
       }
+      if (t.cardId != null && t.status === TransactionStatusEnum.Pending) continue;
       const key = t.categoryId ?? '__sem_categoria__';
       const name = t.category?.name ?? 'Sem categoria';
       const color = t.category?.color ?? null;
@@ -88,14 +89,14 @@ export default function HomeScreen() {
         map.set(key, { name, value: t.amount, color });
       }
     }
-    // Ordenar do maior para o menor impacto
     return Array.from(map.values()).sort((a, b) => b.value - a.value);
   }, [monthlyTransactions]);
 
-  // ─── Cor dinâmica do saldo ────────────────────────────────────────────────
-  const balanceColor = balance >= 0 ? colors.incomeColor : colors.expenseColor;
+  const monthlyBalance = totalReceitas - totalDespesas;
+
+  const balanceColor = monthlyBalance >= 0 ? colors.incomeColor : colors.expenseColor;
   const balanceIcon: React.ComponentProps<typeof Feather>['name'] =
-    balance >= 0 ? 'trending-up' : 'trending-down';
+    monthlyBalance >= 0 ? 'trending-up' : 'trending-down';
 
   return (
     <ScreenWrapper>
@@ -104,7 +105,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Card Saldo Total ─────────────────────────────────────────── */}
-        {loadingBalance ? (
+        {loadingMonthly ? (
           <Skeleton height={80} borderRadius={16} style={{ marginBottom: 16 }} />
         ) : (
           <InfoCard className="mb-4">
@@ -118,13 +119,13 @@ export default function HomeScreen() {
                 </View>
                 <View>
                   <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm font-medium mb-0.5">
-                    Saldo Total
+                    Resultado do Mês
                   </Text>
                   <Text
                     className="text-2xl font-bold"
                     style={{ color: balanceColor }}
                   >
-                    {formatCurrency(balance)}
+                    {formatCurrency(monthlyBalance)}
                   </Text>
                 </View>
               </View>
@@ -132,7 +133,7 @@ export default function HomeScreen() {
                 <View className="flex-row items-center gap-1">
                   <Feather name={balanceIcon} size={15} color={balanceColor} />
                   <Text className="text-xs font-semibold" style={{ color: balanceColor }}>
-                    {balance >= 0 ? 'Positivo' : 'Negativo'}
+                    {monthlyBalance >= 0 ? 'Positivo' : 'Negativo'}
                   </Text>
                 </View>
               </View>
