@@ -12,7 +12,7 @@ import { useCards } from 'hooks/useCards';
 import { useGoals } from 'hooks/useGoals';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { useExportData } from 'hooks/useExportData';
-import { useCardsPendingTotals } from 'hooks/transactions/useCardsPendingTotals';
+import { useAccountBalance } from 'hooks/useAccountBalance';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import { CustomAlert } from 'components/CustomAlert';
 import { formatCurrency } from 'utils/formatCurrency';
@@ -239,6 +239,9 @@ function AccountCard({ item }: { item: Account }) {
   const router = useRouter();
   const accentColor = item.color ?? colors.primaryGold;
 
+  const { balance: computedBalance } = useAccountBalance(item.id);
+  const displayBalance = computedBalance ?? item.balance;
+
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -281,8 +284,8 @@ function AccountCard({ item }: { item: Account }) {
         </View>
         <Text
           className="mr-2 text-sm font-bold"
-          style={{ color: item.balance >= 0 ? colors.incomeColor : colors.expenseColor }}>
-          {formatCurrency(item.balance)}
+          style={{ color: displayBalance >= 0 ? colors.incomeColor : colors.expenseColor }}>
+          {formatCurrency(displayBalance)}
         </Text>
         <Feather name="chevron-right" size={16} color={colors.disabled} />
       </Animated.View>
@@ -398,16 +401,12 @@ export default function SettingsScreen() {
   const { data: cardsData, loading: loadingCards, refetch: refetchCards } = useCards();
   const { data: goalsData, loading: loadingGoals, refetch: refetchGoals } = useGoals();
 
-  const cardIds = cardsData.map((c) => c.id);
-  const { data: cardsPending, refetch: refetchCardsPending } = useCardsPendingTotals(cardIds);
-
   useFocusEffect(
     useCallback(() => {
       refetchAccounts();
       refetchCards();
       refetchGoals();
-      refetchCardsPending();
-    }, [refetchAccounts, refetchCards, refetchGoals, refetchCardsPending])
+    }, [refetchAccounts, refetchCards, refetchGoals])
   );
 
   const [isExporting, setIsExporting] = useState(false);
