@@ -13,7 +13,7 @@
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "web": "expo start --web",
-    "build:apk": "ANDROID_HOME=$HOME/Android/Sdk eas build --platform android --profile preview --local",
+    "build:apk": "ANDROID_HOME=$HOME/Android/Sdk bunx eas-cli build --platform android --profile preview --local",
     "build:aab": "eas build --platform android --profile production"
   },
   "dependencies": {

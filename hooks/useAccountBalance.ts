@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { db } from 'db/client';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, gte, lte, ne } from 'drizzle-orm';
 import { accounts, transactions } from 'db/schema';
 import { TransactionTypeEnum, TransactionStatusEnum } from 'types';
-
-
 
 interface UseAccountBalanceResult {
   balance: number | null;
@@ -14,9 +12,10 @@ interface UseAccountBalanceResult {
 }
 
 /**
- * Calcula o saldo dinâmico de uma conta.
- * Saldo exibido = accounts.balance (saldo inicial) + Σ receitas pagas - Σ despesas pagas
- * O campo accounts.balance NÃO é alterado na criação/edição de transações.
+ * Calcula o saldo dinâmico de uma conta no mês atual.
+ * Saldo exibido = accounts.balance (saldo inicial) + Σ receitas do mês - Σ despesas do mês
+ * Considera apenas transações cuja `date` cai dentro do mês/ano corrente,
+ * excluindo as canceladas.
  */
 export function useAccountBalance(accountId: string | null): UseAccountBalanceResult {
   const [balance, setBalance] = useState<number | null>(null);
@@ -47,19 +46,25 @@ export function useAccountBalance(accountId: string | null): UseAccountBalanceRe
         return;
       }
 
-      const paidTransactions = db
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+
+      const monthTransactions = db
         .select({ amount: transactions.amount, type: transactions.type })
         .from(transactions)
         .where(
           and(
             eq(transactions.accountId, accountId),
             ne(transactions.status, TransactionStatusEnum.Cancelled),
+            gte(transactions.date, startOfMonth),
+            lte(transactions.date, endOfMonth),
           ),
         )
         .all();
 
       let delta = 0;
-      for (const t of paidTransactions) {
+      for (const t of monthTransactions) {
         if (t.type === TransactionTypeEnum.Income) {
           delta += t.amount;
         } else {
