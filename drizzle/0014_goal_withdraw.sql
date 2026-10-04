@@ -1,0 +1,1 @@
+ALTER TABLE `transactions` ADD `goal_withdraw` integer DEFAULT false NOT NULL;

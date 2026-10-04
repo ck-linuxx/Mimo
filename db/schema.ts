@@ -109,6 +109,7 @@ export const transactions = sqliteTable('transactions', {
   accountId: text('account_id').references(() => accounts.id),
   cardId: text('card_id').references(() => cards.id),
   goalId: text('goal_id').references(() => financialGoals.id),
+  goalWithdraw: integer('goal_withdraw', { mode: 'boolean' }).notNull().default(false),
   transactionGroupId: text('transaction_group_id').references(() => transactionGroups.id),
   installmentNumber: integer('installment_number'),
   notes: text('notes'),

@@ -33,7 +33,8 @@ export function useUpdateTransactionStatus() {
             .where(eq(financialGoals.id, tx.goalId))
             .get();
           if (goal) {
-            const delta = status === TransactionStatusEnum.Paid ? tx.amount : -tx.amount;
+            const signed = tx.goalWithdraw ? -tx.amount : tx.amount;
+            const delta = status === TransactionStatusEnum.Paid ? signed : -signed;
             const newAmount = Math.max(0, goal.currentAmount + delta);
             dbTx.update(financialGoals)
               .set({ currentAmount: newAmount, updatedAt: Date.now() })

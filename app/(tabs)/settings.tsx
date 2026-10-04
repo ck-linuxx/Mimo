@@ -13,6 +13,7 @@ import { useGoals } from 'hooks/useGoals';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { useExportData } from 'hooks/useExportData';
 import { useAccountBalance } from 'hooks/useAccountBalance';
+import { useCardsPendingTotals } from 'hooks/transactions/useCardsPendingTotals';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
 import { CustomAlert } from 'components/CustomAlert';
 import { formatCurrency } from 'utils/formatCurrency';
@@ -401,12 +402,16 @@ export default function SettingsScreen() {
   const { data: cardsData, loading: loadingCards, refetch: refetchCards } = useCards();
   const { data: goalsData, loading: loadingGoals, refetch: refetchGoals } = useGoals();
 
+  const cardIds = cardsData.map((c) => c.id);
+  const { data: cardsPending, refetch: refetchCardsPending } = useCardsPendingTotals(cardIds);
+
   useFocusEffect(
     useCallback(() => {
       refetchAccounts();
       refetchCards();
       refetchGoals();
-    }, [refetchAccounts, refetchCards, refetchGoals])
+      refetchCardsPending();
+    }, [refetchAccounts, refetchCards, refetchGoals, refetchCardsPending])
   );
 
   const [isExporting, setIsExporting] = useState(false);

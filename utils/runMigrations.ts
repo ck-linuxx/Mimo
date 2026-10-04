@@ -1,4 +1,6 @@
-import type { SQLiteDatabase } from 'expo-sqlite';
+import { backupDatabaseSync, openDatabaseSync, type SQLiteDatabase } from 'expo-sqlite';
+
+const PRE_MIGRATION_BACKUP_NAME = 'db.pre-migration.db';
 
 interface MigrationJournalEntry {
   idx: number;
@@ -40,12 +42,29 @@ export function runMigrationsSync(expo: SQLiteDatabase, data: MigrationData): vo
   );
   const lastWhen: number = last?.created_at ?? 0;
 
-  // Aplica migrations pendentes dentro de uma transação
-  expo.withTransactionSync(() => {
-    for (const entry of data.journal.entries) {
-      // Já aplicada? Pula.
-      if (entry.when <= lastWhen) continue;
+  const pending = data.journal.entries.filter((entry) => entry.when > lastWhen);
+  if (pending.length === 0) return;
 
+  // Backup de segurança antes de aplicar migrations em um banco que já tem dados.
+  // Mantém apenas o estado imediatamente anterior à última atualização
+  // (arquivo `db.pre-migration.db`). Falha no backup nunca bloqueia o app.
+  if (lastWhen > 0) {
+    try {
+      const backupDb = openDatabaseSync(PRE_MIGRATION_BACKUP_NAME);
+      try {
+        backupDatabaseSync({ sourceDatabase: expo, destDatabase: backupDb });
+      } finally {
+        backupDb.closeSync();
+      }
+    } catch (e) {
+      console.warn('[migrations] Backup pré-migration falhou:', e);
+    }
+  }
+
+  // Aplica migrations pendentes dentro de uma transação (tudo ou nada:
+  // se qualquer migration falhar, o banco volta ao estado anterior sem perder dados).
+  expo.withTransactionSync(() => {
+    for (const entry of pending) {
       const key = `m${String(entry.idx).padStart(4, '0')}`;
       const rawSql = (data.migrations as Record<string, string>)[key];
       if (!rawSql) throw new Error(`Migration não encontrada: ${entry.tag}`);
@@ -68,7 +87,18 @@ export function runMigrationsSync(expo: SQLiteDatabase, data: MigrationData): vo
         });
 
       for (const stmt of statements) {
-        expo.execSync(stmt);
+        try {
+          expo.execSync(stmt);
+        } catch (e) {
+          // Idempotência: coluna já existe (ex.: banco com schema parcialmente aplicado).
+          // Só ignora ADD COLUMN duplicado; qualquer outro erro aborta e faz rollback.
+          const isAddColumn = /^\s*ALTER\s+TABLE\s+\S+\s+ADD(\s+COLUMN)?\s/i.test(stmt);
+          const isDuplicate = e instanceof Error && /duplicate column name/i.test(e.message);
+          if (isAddColumn && isDuplicate) continue;
+          throw new Error(
+            `Migration ${entry.tag} falhou: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
       }
 
       // Registra a migration como aplicada

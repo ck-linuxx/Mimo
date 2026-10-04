@@ -10,6 +10,8 @@
     "ios": "expo run:ios",
     "start": "expo start",
     "prebuild": "expo prebuild",
+    "db:generate": "drizzle-kit generate && node scripts/check-migrations.js",
+    "db:check": "node scripts/check-migrations.js",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "web": "expo start --web",

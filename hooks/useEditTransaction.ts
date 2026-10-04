@@ -46,7 +46,7 @@ export function useEditTransaction() {
       if (scope === 'only_this' || !transactionGroupId) {
         const existing = data.status
           ? db
-              .select({ goalId: transactions.goalId, amount: transactions.amount, status: transactions.status })
+              .select({ goalId: transactions.goalId, goalWithdraw: transactions.goalWithdraw, amount: transactions.amount, status: transactions.status })
               .from(transactions)
               .where(eq(transactions.id, transactionId))
               .get()
@@ -63,10 +63,11 @@ export function useEditTransaction() {
               .get();
             if (goal) {
               let newAmount = goal.currentAmount;
+              const signed = existing.goalWithdraw ? -existing.amount : existing.amount;
               if (data.status === TransactionStatusEnum.Paid) {
-                newAmount = goal.currentAmount + existing.amount;
+                newAmount = Math.max(0, goal.currentAmount + signed);
               } else if (existing.status === TransactionStatusEnum.Paid) {
-                newAmount = Math.max(0, goal.currentAmount - existing.amount);
+                newAmount = Math.max(0, goal.currentAmount - signed);
               }
               dbTx.update(financialGoals)
                 .set({ currentAmount: newAmount, updatedAt })

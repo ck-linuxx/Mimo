@@ -49,6 +49,7 @@ interface FormValues {
   accountId: string;
   cardId: string;
   goalId: string;
+  goalWithdraw: boolean;
   paymentType: PaymentType;
   installments: number;
   frequency: FrequencyEnum | '';
@@ -67,6 +68,7 @@ const formSchema = z
     accountId: z.string(),
     cardId: z.string(),
     goalId: z.string(),
+    goalWithdraw: z.boolean(),
     paymentType: z.union([z.literal('single'), z.enum(GroupTypeEnum)]),
     installments: z.number(),
     frequency: z.union([z.enum(FrequencyEnum), z.literal('')]),
@@ -100,6 +102,7 @@ const defaultValues: FormValues = {
   accountId: '',
   cardId: '',
   goalId: '',
+  goalWithdraw: false,
   paymentType: 'single',
   installments: 2,
   frequency: '',
@@ -125,6 +128,7 @@ export default function AddTransaction() {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<FinancialGoal | null>(null);
+  const [showWithdrawTip, setShowWithdrawTip] = useState(false);
 
   // Display do campo valor (formatação BRL)
   const [amountDisplay, setAmountDisplay] = useState('');
@@ -153,6 +157,7 @@ export default function AddTransaction() {
       try {
         const now = Date.now();
         const paidAt = value.status === TransactionStatusEnum.Paid ? now : null;
+        const goalSign = value.goalWithdraw ? -1 : 1;
 
         if (value.paymentType === 'single') {
           const dueDate = selectedCard
@@ -172,6 +177,7 @@ export default function AddTransaction() {
             accountId: value.accountId || null,
             cardId: value.cardId || null,
             goalId: value.goalId || null,
+            goalWithdraw: !!value.goalId && value.goalWithdraw,
             isSubscription: value.isSubscription,
             createdAt: now,
             updatedAt: now,
@@ -182,7 +188,7 @@ export default function AddTransaction() {
               .from(financialGoals).where(eq(financialGoals.id, value.goalId)).get();
             if (goal) {
               db.update(financialGoals)
-                .set({ currentAmount: goal.currentAmount + value.amount, updatedAt: now })
+                .set({ currentAmount: Math.max(0, goal.currentAmount + goalSign * value.amount), updatedAt: now })
                 .where(eq(financialGoals.id, value.goalId))
                 .run();
             }
@@ -231,6 +237,7 @@ export default function AddTransaction() {
                 accountId: value.accountId || null,
                 cardId: value.cardId || null,
                 goalId: value.goalId || null,
+                goalWithdraw: !!value.goalId && value.goalWithdraw,
                 transactionGroupId: groupId,
                 installmentNumber: i,
                 isSubscription: value.isSubscription,
@@ -244,7 +251,7 @@ export default function AddTransaction() {
                 .from(financialGoals).where(eq(financialGoals.id, value.goalId)).get();
               if (goal) {
                 tx.update(financialGoals)
-                  .set({ currentAmount: goal.currentAmount + installmentAmount, updatedAt: now })
+                  .set({ currentAmount: Math.max(0, goal.currentAmount + goalSign * installmentAmount), updatedAt: now })
                   .where(eq(financialGoals.id, value.goalId))
                   .run();
               }
@@ -287,6 +294,7 @@ export default function AddTransaction() {
                 accountId: value.accountId || null,
                 cardId: value.cardId || null,
                 goalId: value.goalId || null,
+                goalWithdraw: !!value.goalId && value.goalWithdraw,
                 transactionGroupId: groupId,
                 isSubscription: value.isSubscription,
                 createdAt: now,
@@ -299,7 +307,7 @@ export default function AddTransaction() {
                 .from(financialGoals).where(eq(financialGoals.id, value.goalId)).get();
               if (goal) {
                 tx.update(financialGoals)
-                  .set({ currentAmount: goal.currentAmount + value.amount, updatedAt: now })
+                  .set({ currentAmount: Math.max(0, goal.currentAmount + goalSign * value.amount), updatedAt: now })
                   .where(eq(financialGoals.id, value.goalId))
                   .run();
               }
@@ -411,6 +419,7 @@ export default function AddTransaction() {
                   field.handleChange(TransactionTypeEnum.Income);
                   form.setFieldValue('cardId', '');
                   form.setFieldValue('categoryId', '');
+                  form.setFieldValue('goalWithdraw', false);
                   setSelectedCategory(null);
                   setSelectedCard(null);
                 }}
@@ -1027,6 +1036,7 @@ export default function AddTransaction() {
                   onPress={() => {
                     setSelectedGoal(null);
                     field.handleChange('');
+                    form.setFieldValue('goalWithdraw', false);
                   }}
                 >
                   <Feather name="x-circle" size={14} color={colors.textSecondary} />
@@ -1038,6 +1048,76 @@ export default function AddTransaction() {
             </View>
           )}
         </form.Field>
+
+        {/* Retirar da meta (somente despesa com meta selecionada) */}
+        <form.Subscribe selector={(s) => [s.values.type, s.values.goalId] as const}>
+          {([type, goalId]) =>
+            type === TransactionTypeEnum.Expense && goalId ? (
+              <form.Field name="goalWithdraw">
+                {(field) => (
+                  <View>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => field.handleChange(!field.state.value)}
+                      className="p-4 rounded-xl flex-row items-center justify-between"
+                      style={{
+                        backgroundColor: field.state.value
+                          ? colors.expenseColor + '20'
+                          : colors.cardBackground,
+                        borderWidth: 1,
+                        borderColor: field.state.value ? colors.expenseColor : colors.borderColor,
+                      }}
+                    >
+                      <View className="flex-row items-center gap-2 flex-1">
+                        <Text className="font-medium text-base" style={{ color: colors.textPrimary }}>
+                          Retirar valor da meta
+                        </Text>
+                        <TouchableOpacity
+                          hitSlop={10}
+                          onPress={() => setShowWithdrawTip((p) => !p)}
+                        >
+                          <Feather
+                            name="info"
+                            size={14}
+                            color={showWithdrawTip ? colors.primaryGold : colors.textSecondary}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                      <View
+                        className="w-12 h-6 rounded-full p-1 justify-center"
+                        style={{ backgroundColor: field.state.value ? colors.expenseColor : '#9ca3af' }}
+                      >
+                        <View
+                          className="w-4 h-4 rounded-full bg-white"
+                          style={{ alignSelf: field.state.value ? 'flex-end' : 'flex-start' }}
+                        />
+                      </View>
+                    </TouchableOpacity>
+                    {showWithdrawTip && (
+                      <View
+                        style={{
+                          marginTop: 8,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 10,
+                          backgroundColor: colors.iconBackground,
+                          borderWidth: 1,
+                          borderColor: colors.borderColor,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
+                          Por padrão, uma despesa vinculada a uma meta soma o valor ao saldo da
+                          meta. Ativando esta opção, o valor da despesa será subtraído do saldo da
+                          meta (ex.: usar o dinheiro guardado para pagar algo).
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </form.Field>
+            ) : null
+          }
+        </form.Subscribe>
 
         {/* Status de Pagamento */}
         <form.Field name="status">
