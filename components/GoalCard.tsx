@@ -10,10 +10,7 @@ import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { GoalStatusEnum } from 'types/financialGoal';
 import type { FinancialGoal } from 'types/financialGoal';
-
-// ─── Spring constants ─────────────────────────────────────────────────────────
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
+import { SPRING_BOUNCE } from 'constants/animations';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

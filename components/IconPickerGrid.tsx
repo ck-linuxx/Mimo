@@ -185,9 +185,11 @@ export function IconPickerGrid({
     [iconPages, currentIconPage],
   );
 
-  const iconSize = Math.floor(
-    (screenWidth - containerPadding - ICON_ROW_GAP * (ICON_COLS - 1)) / ICON_COLS,
+  const effectiveWidth = Math.min(screenWidth, 640);
+  const calculatedSize = Math.floor(
+    (effectiveWidth - containerPadding - ICON_ROW_GAP * (ICON_COLS - 1)) / ICON_COLS,
   );
+  const iconSize = Math.min(Math.max(calculatedSize, 40), 56);
 
   const iconRows = useMemo(() => {
     const rows: string[][] = [];

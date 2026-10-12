@@ -15,13 +15,15 @@ import Animated, {
 import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
-import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
+import { ScreenWrapper, useTabBarPadding } from 'components/ScreenWrapper';
 import { ActionButton } from 'components/ActionButton';
 import { BarChart } from 'components/charts/BarChart';
 import { DonutChart } from 'components/charts/DonutChart';
 import { BudgetGaugeChart } from 'components/charts/BudgetGaugeChart';
 import { ChartListCard } from 'components/reports/ChartListCard';
 import { Skeleton } from 'components/Skeleton';
+import { useBreakpoint } from 'hooks/useBreakpoint';
+import { ResponsiveContainer } from 'components/ResponsiveContainer';
 import { useReportsCashFlow } from 'hooks/transactions/useReportsCashFlow';
 import { useReportsBudgetHealth } from 'hooks/transactions/useReportsBudgetHealth';
 import { useReportsLast3Months } from 'hooks/transactions/useReportsLast3Months';
@@ -67,6 +69,8 @@ function useIsFirstLoad(loading: boolean): boolean {
 export default function ReportsScreen() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
+  const { isTablet, isNotebookMode, contentMaxWidth } = useBreakpoint();
+  const tabBarPadding = useTabBarPadding();
 
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -317,8 +321,241 @@ export default function ReportsScreen() {
     setSubscriptionPage(0);
   }, [subscriptionSelectedId, subscriptionPageSize]);
 
+  const renderKpiCards = () => (
+    <View style={{ flexDirection: 'row', gap: 10 }}>
+      {[
+        { label: 'Receitas', value: totalIncome, color: colors.incomeColor, icon: 'trending-up' },
+        { label: 'Despesas', value: totalExpense, color: colors.expenseColor, icon: 'trending-down' },
+        {
+          label: 'Saldo',
+          value: netBalance,
+          color: netBalance >= 0 ? colors.incomeColor : colors.expenseColor,
+          icon: 'activity',
+        },
+      ].map((kpi) => (
+        <View
+          key={kpi.label}
+          style={{
+            flex: 1,
+            backgroundColor: colors.cardBackground,
+            borderRadius: 14, padding: 12,
+            borderWidth: 1, borderColor: colors.borderColor, gap: 4,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Feather name={kpi.icon as any} size={13} color={kpi.color} />
+            <Text style={{ fontSize: 11, color: colors.textSecondary }}>{kpi.label}</Text>
+          </View>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: kpi.color }} numberOfLines={1}>
+            {formatCurrency(Math.abs(kpi.value))}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+
+  const renderLast3Months = () => (
+    <View>
+      <SectionHeader
+        title="Receita vs Despesas"
+        icon="bar-chart-2"
+        description="Evolução de receitas e despesas pagas mês a mês nos últimos 3 meses, permitindo identificar tendências."
+      />
+      {isLast3FirstLoad ? (
+        <Skeleton height={244} borderRadius={14} />
+      ) : (
+        <View style={{ backgroundColor: colors.cardBackground, borderRadius: 14, borderWidth: 1, borderColor: colors.borderColor, padding: 12 }}>
+          <BarChart
+            series={[
+              { name: 'Receitas', data: last3Income, color: colors.incomeColor },
+              { name: 'Despesas', data: last3Expense, color: colors.expenseColor },
+            ]}
+            xAxisLabels={last3Labels}
+            height={220}
+            emptyText="Sem dados para os últimos 3 meses"
+          />
+        </View>
+      )}
+    </View>
+  );
+
+  const renderExpenseByCategory = () => (
+    <View>
+      <SectionHeader
+        title="Despesas por Categoria"
+        icon="pie-chart"
+        description="Distribuição dos gastos do mês por categoria. Selecione uma categoria para ver a lista paginada de transações no mesmo card."
+      />
+      <ChartListCard
+        chart={(
+          <DonutChart
+            data={categoryChartData}
+            height={220}
+            emptyText="Sem despesas por categoria no mês"
+          />
+        )}
+        selectorItems={categorySelectorItems}
+        selectedId={categorySelectedId}
+        onSelect={setCategorySelectedId}
+        transactions={categoryTransactions}
+        totalCount={categoryTransactionsCount}
+        page={categoryPage}
+        pageSize={categoryPageSize}
+        onPageChange={setCategoryPage}
+        onPageSizeChange={setCategoryPageSize}
+        isChartLoading={isCategoryFirstLoad}
+        isListLoading={loadingCategoryTransactions}
+        emptySelectionText="Sem categorias com gasto neste mês"
+        emptyListText="Nenhuma transação na categoria selecionada"
+        listIcon="tag"
+      />
+    </View>
+  );
+
+  const renderExpenseByAccount = () => (
+    <View>
+      <SectionHeader
+        title="Gastos por Conta"
+        icon="briefcase"
+        description="Total gasto por conta bancária no mês selecionado, com detalhamento paginado das transações da conta selecionada."
+      />
+      <ChartListCard
+        chart={(
+          <BarChart
+            series={[{ name: 'Gasto por conta', data: accountTotals, color: colors.expenseColor }]}
+            xAxisLabels={accountLabels}
+            height={220}
+            emptyText="Sem gastos por conta no mês"
+          />
+        )}
+        selectorItems={accountSelectorItems}
+        selectedId={accountSelectedId}
+        onSelect={setAccountSelectedId}
+        transactions={accountTransactions}
+        totalCount={accountTransactionsCount}
+        page={accountPage}
+        pageSize={accountPageSize}
+        onPageChange={setAccountPage}
+        onPageSizeChange={setAccountPageSize}
+        isChartLoading={isAccountFirstLoad}
+        isListLoading={loadingAccountTransactions}
+        emptySelectionText="Sem contas com gastos no mês"
+        emptyListText="Nenhuma transação na conta selecionada"
+        listIcon="credit-card"
+      />
+    </View>
+  );
+
+  const renderExpenseByCard = () => (
+    <View>
+      <SectionHeader
+        title="Débitos no Cartão"
+        icon="credit-card"
+        description="Mostra o total gasto por cartão no mês e a utilização do limite do cartão selecionado no mesmo card."
+      />
+      <ChartListCard
+        chart={(
+          <BarChart
+            series={[{ name: 'Gasto no cartão', data: cardTotals, color: colors.expenseColor }]}
+            xAxisLabels={cardLabels}
+            height={220}
+            emptyText="Sem débitos em cartão no mês"
+          />
+        )}
+        selectorItems={cardSelectorItems}
+        selectedId={cardSelectedId}
+        onSelect={setCardSelectedId}
+        transactions={cardTransactions}
+        totalCount={cardTransactionsCount}
+        page={cardPage}
+        pageSize={cardPageSize}
+        onPageChange={setCardPage}
+        onPageSizeChange={setCardPageSize}
+        isChartLoading={isCardFirstLoad}
+        isListLoading={loadingCardTransactions}
+        emptySelectionText="Sem cartões ativos para exibição"
+        emptyListText="Nenhuma transação no cartão selecionado"
+        listIcon="shopping-bag"
+      />
+    </View>
+  );
+
+  const renderSubscriptions = () => (
+    <View>
+      <SectionHeader
+        title="Assinaturas"
+        icon="repeat"
+        description="Distribuição das assinaturas ativas do mês por categoria. Selecione uma categoria para ver a lista paginada de transações."
+      />
+      <ChartListCard
+        chart={(
+          <DonutChart
+            data={subscriptionChartData}
+            height={220}
+            emptyText="Sem assinaturas no mês"
+          />
+        )}
+        selectorItems={subscriptionSelectorItems}
+        selectedId={subscriptionSelectedId}
+        onSelect={setSubscriptionSelectedId}
+        transactions={subscriptionTransactions}
+        totalCount={subscriptionTransactionsCount}
+        page={subscriptionPage}
+        pageSize={subscriptionPageSize}
+        onPageChange={setSubscriptionPage}
+        onPageSizeChange={setSubscriptionPageSize}
+        isChartLoading={isSubscriptionFirstLoad}
+        isListLoading={loadingSubscriptionTransactions}
+        emptySelectionText="Sem assinaturas no mês"
+        emptyListText="Nenhuma transação de assinatura na categoria selecionada"
+        listIcon="repeat"
+      />
+      {!isSubscriptionFirstLoad && monthlySubscriptionTotal > 0 && (
+        <View className="mt-3 bg-light-card-background dark:bg-dark-card-background rounded-[14px] border border-light-border-color dark:border-dark-border-color p-[14px] gap-1">
+          <View className="flex-row items-center gap-1.5">
+            <Feather name="calendar" size={14} color={colors.textSecondary} />
+            <Text className="text-light-text-secondary dark:text-dark-text-secondary text-[13px]">
+              Projeção anual
+            </Text>
+          </View>
+          <Text className="text-light-text-primary dark:text-dark-text-primary text-lg font-bold">
+            {formatCurrency(annualProjection)}
+          </Text>
+          <Text className="text-light-text-secondary dark:text-dark-text-secondary text-[11px]">
+            Estimativa baseada no total de assinaturas de {MONTHS_PT[selectedMonth]}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderProvision = () => (
+    <View>
+      <SectionHeader
+        title="Provisão (próximos 2 meses)"
+        icon="clock"
+        description="Estimativa de receitas e despesas para os próximos 2 meses com base nos lançamentos pendentes já registrados."
+      />
+      {isProvisionFirstLoad ? (
+        <Skeleton height={244} borderRadius={14} />
+      ) : (
+        <View style={{ backgroundColor: colors.cardBackground, borderRadius: 14, borderWidth: 1, borderColor: colors.borderColor, padding: 12 }}>
+          <BarChart
+            series={[
+              { name: 'Receita prevista', data: provisionIncome, color: colors.incomeColor },
+              { name: 'Despesa prevista', data: provisionExpense, color: colors.expenseColor },
+            ]}
+            xAxisLabels={provisionLabels}
+            height={220}
+            emptyText="Nenhuma transação registrada para os próximos 2 meses"
+          />
+        </View>
+      )}
+    </View>
+  );
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={contentMaxWidth}>
       {/* ── Header ────────────────────────────────────────────────────────────── */}
       <View
         style={{
@@ -344,234 +581,43 @@ export default function ReportsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: TAB_BAR_HEIGHT, gap: 20 }}
+        contentContainerStyle={{
+          paddingHorizontal: isNotebookMode ? 24 : 16,
+          paddingBottom: tabBarPadding,
+          gap: 20,
+        }}
       >
-        {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {[
-            { label: 'Receitas', value: totalIncome, color: colors.incomeColor, icon: 'trending-up' },
-            { label: 'Despesas', value: totalExpense, color: colors.expenseColor, icon: 'trending-down' },
-            {
-              label: 'Saldo',
-              value: netBalance,
-              color: netBalance >= 0 ? colors.incomeColor : colors.expenseColor,
-              icon: 'activity',
-            },
-          ].map((kpi) => (
-            <View
-              key={kpi.label}
-              style={{
-                flex: 1,
-                backgroundColor: colors.cardBackground,
-                borderRadius: 14, padding: 12,
-                borderWidth: 1, borderColor: colors.borderColor, gap: 4,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Feather name={kpi.icon as any} size={13} color={kpi.color} />
-                <Text style={{ fontSize: 11, color: colors.textSecondary }}>{kpi.label}</Text>
+        <ResponsiveContainer type="content">
+          <View style={{ gap: 20 }}>
+            {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
+            {renderKpiCards()}
+
+            {/* ── Seções dos Gráficos: 2 Colunas em Tablet, 1 Coluna em Celular ─── */}
+            {isTablet ? (
+              <View className="flex-row gap-4 items-start">
+                <View className="flex-1" style={{ gap: 20 }}>
+                  {renderLast3Months()}
+                  {renderExpenseByCategory()}
+                  {renderSubscriptions()}
+                </View>
+                <View className="flex-1" style={{ gap: 20 }}>
+                  {renderProvision()}
+                  {renderExpenseByAccount()}
+                  {renderExpenseByCard()}
+                </View>
               </View>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: kpi.color }} numberOfLines={1}>
-                {formatCurrency(Math.abs(kpi.value))}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Bar: Receita vs Despesas (últimos 3 meses) ────────────────────── */}
-        <View>
-          <SectionHeader
-            title="Receita vs Despesas"
-            icon="bar-chart-2"
-            description="Evolução de receitas e despesas pagas mês a mês nos últimos 3 meses, permitindo identificar tendências."
-          />
-          {isLast3FirstLoad ? (
-            <Skeleton height={244} borderRadius={14} />
-          ) : (
-            <View style={{ backgroundColor: colors.cardBackground, borderRadius: 14, borderWidth: 1, borderColor: colors.borderColor, padding: 12 }}>
-              <BarChart
-                series={[
-                  { name: 'Receitas', data: last3Income, color: colors.incomeColor },
-                  { name: 'Despesas', data: last3Expense, color: colors.expenseColor },
-                ]}
-                xAxisLabels={last3Labels}
-                height={220}
-                emptyText="Sem dados para os últimos 3 meses"
-              />
-            </View>
-          )}
-        </View>
-
-        {/* ── Donut + Lista: Despesas por Categoria ─────────────────────────── */}
-        <View>
-          <SectionHeader
-            title="Despesas por Categoria"
-            icon="pie-chart"
-            description="Distribuição dos gastos do mês por categoria. Selecione uma categoria para ver a lista paginada de transações no mesmo card."
-          />
-          <ChartListCard
-            chart={(
-              <DonutChart
-                data={categoryChartData}
-                height={220}
-                emptyText="Sem despesas por categoria no mês"
-              />
-            )}
-            selectorItems={categorySelectorItems}
-            selectedId={categorySelectedId}
-            onSelect={setCategorySelectedId}
-            transactions={categoryTransactions}
-            totalCount={categoryTransactionsCount}
-            page={categoryPage}
-            pageSize={categoryPageSize}
-            onPageChange={setCategoryPage}
-            onPageSizeChange={setCategoryPageSize}
-            isChartLoading={isCategoryFirstLoad}
-            isListLoading={loadingCategoryTransactions}
-            emptySelectionText="Sem categorias com gasto neste mês"
-            emptyListText="Nenhuma transação na categoria selecionada"
-            listIcon="tag"
-          />
-        </View>
-
-        {/* ── Bar + Lista: Gastos por Conta ─────────────────────────────────── */}
-        <View>
-          <SectionHeader
-            title="Gastos por Conta"
-            icon="briefcase"
-            description="Total gasto por conta bancária no mês selecionado, com detalhamento paginado das transações da conta selecionada."
-          />
-          <ChartListCard
-            chart={(
-              <BarChart
-                series={[{ name: 'Gasto por conta', data: accountTotals, color: colors.expenseColor }]}
-                xAxisLabels={accountLabels}
-                height={220}
-                emptyText="Sem gastos por conta no mês"
-              />
-            )}
-            selectorItems={accountSelectorItems}
-            selectedId={accountSelectedId}
-            onSelect={setAccountSelectedId}
-            transactions={accountTransactions}
-            totalCount={accountTransactionsCount}
-            page={accountPage}
-            pageSize={accountPageSize}
-            onPageChange={setAccountPage}
-            onPageSizeChange={setAccountPageSize}
-            isChartLoading={isAccountFirstLoad}
-            isListLoading={loadingAccountTransactions}
-            emptySelectionText="Sem contas com gastos no mês"
-            emptyListText="Nenhuma transação na conta selecionada"
-            listIcon="credit-card"
-          />
-        </View>
-
-        {/* ── Bar + Lista: Débitos no Cartão + Uso do Limite ───────────────── */}
-        <View>
-          <SectionHeader
-            title="Débitos no Cartão"
-            icon="credit-card"
-            description="Mostra o total gasto por cartão no mês e a utilização do limite do cartão selecionado no mesmo card."
-          />
-          <ChartListCard
-            chart={(
-              <BarChart
-                series={[{ name: 'Gasto no cartão', data: cardTotals, color: colors.expenseColor }]}
-                xAxisLabels={cardLabels}
-                height={220}
-                emptyText="Sem débitos em cartão no mês"
-              />
-            )}
-            selectorItems={cardSelectorItems}
-            selectedId={cardSelectedId}
-            onSelect={setCardSelectedId}
-            transactions={cardTransactions}
-            totalCount={cardTransactionsCount}
-            page={cardPage}
-            pageSize={cardPageSize}
-            onPageChange={setCardPage}
-            onPageSizeChange={setCardPageSize}
-            isChartLoading={isCardFirstLoad}
-            isListLoading={loadingCardTransactions}
-            emptySelectionText="Sem cartões ativos para exibição"
-            emptyListText="Nenhuma transação no cartão selecionado"
-            listIcon="shopping-bag"
-          />
-        </View>
-
-        {/* ── Donut + Lista: Assinaturas por Categoria ──────────────────────── */}
-        <View>
-          <SectionHeader
-            title="Assinaturas"
-            icon="repeat"
-            description="Distribuição das assinaturas ativas do mês por categoria. Selecione uma categoria para ver a lista paginada de transações."
-          />
-          <ChartListCard
-            chart={(
-              <DonutChart
-                data={subscriptionChartData}
-                height={220}
-                emptyText="Sem assinaturas no mês"
-              />
-            )}
-            selectorItems={subscriptionSelectorItems}
-            selectedId={subscriptionSelectedId}
-            onSelect={setSubscriptionSelectedId}
-            transactions={subscriptionTransactions}
-            totalCount={subscriptionTransactionsCount}
-            page={subscriptionPage}
-            pageSize={subscriptionPageSize}
-            onPageChange={setSubscriptionPage}
-            onPageSizeChange={setSubscriptionPageSize}
-            isChartLoading={isSubscriptionFirstLoad}
-            isListLoading={loadingSubscriptionTransactions}
-            emptySelectionText="Sem assinaturas no mês"
-            emptyListText="Nenhuma transação de assinatura na categoria selecionada"
-            listIcon="repeat"
-          />
-          {!isSubscriptionFirstLoad && monthlySubscriptionTotal > 0 && (
-            <View className="mt-3 bg-light-card-background dark:bg-dark-card-background rounded-[14px] border border-light-border-color dark:border-dark-border-color p-[14px] gap-1">
-              <View className="flex-row items-center gap-1.5">
-                <Feather name="calendar" size={14} color={colors.textSecondary} />
-                <Text className="text-light-text-secondary dark:text-dark-text-secondary text-[13px]">
-                  Projeção anual
-                </Text>
+            ) : (
+              <View style={{ gap: 20 }}>
+                {renderLast3Months()}
+                {renderExpenseByCategory()}
+                {renderExpenseByAccount()}
+                {renderExpenseByCard()}
+                {renderSubscriptions()}
+                {renderProvision()}
               </View>
-              <Text className="text-light-text-primary dark:text-dark-text-primary text-lg font-bold">
-                {formatCurrency(annualProjection)}
-              </Text>
-              <Text className="text-light-text-secondary dark:text-dark-text-secondary text-[11px]">
-                Estimativa baseada no total de assinaturas de {MONTHS_PT[selectedMonth]}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* ── Bar: Provisão (próximos 2 meses) ──────────────────────────────── */}
-        <View>
-          <SectionHeader
-            title="Provisão (próximos 2 meses)"
-            icon="clock"
-            description="Estimativa de receitas e despesas para os próximos 2 meses com base nos lançamentos pendentes já registrados."
-          />
-          {isProvisionFirstLoad ? (
-            <Skeleton height={244} borderRadius={14} />
-          ) : (
-            <View style={{ backgroundColor: colors.cardBackground, borderRadius: 14, borderWidth: 1, borderColor: colors.borderColor, padding: 12 }}>
-              <BarChart
-                series={[
-                  { name: 'Receita prevista', data: provisionIncome, color: colors.incomeColor },
-                  { name: 'Despesa prevista', data: provisionExpense, color: colors.expenseColor },
-                ]}
-                xAxisLabels={provisionLabels}
-                height={220}
-                emptyText="Nenhuma transação registrada para os próximos 2 meses"
-              />
-            </View>
-          )}
-        </View>
-
+            )}
+          </View>
+        </ResponsiveContainer>
       </ScrollView>
     </ScreenWrapper>
   );

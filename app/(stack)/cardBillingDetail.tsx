@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { ScreenWrapper } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { ActionButton } from 'components/ActionButton';
 import { InfoCard } from 'components/InfoCard';
 import { PaginatedList } from 'components/PaginatedList';
@@ -48,8 +49,10 @@ export default function CardBillingDetailScreen() {
     refetchTx();
   };
 
+  const { contentMaxWidth } = useBreakpoint();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={contentMaxWidth ?? 840}>
       <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />
         <Text className="text-xl font-bold" style={{ color: colors.textPrimary }}>

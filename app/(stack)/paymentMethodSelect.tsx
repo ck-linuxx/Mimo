@@ -19,6 +19,7 @@ import { useAccounts } from 'hooks/useAccounts';
 import { useCards } from 'hooks/useCards';
 import { consumeSelectionCallback } from 'utils/selectionStore';
 import { ScreenWrapper } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { ActionButton } from 'components/ActionButton';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
@@ -113,8 +114,10 @@ export default function PaymentMethodSelectScreen() {
     ? cards.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     : cards;
 
+  const { formMaxWidth } = useBreakpoint();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 640}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-6 pb-4 pt-2">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />

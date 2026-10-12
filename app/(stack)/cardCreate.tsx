@@ -19,6 +19,7 @@ import { useTheme } from 'themes';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { CustomAlert } from 'components/CustomAlert';
 import { ScreenWrapper } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { AppButton } from 'components/AppButton';
 import { ActionButton } from 'components/ActionButton';
 import { ColorPickerCarousel } from 'components/IconPickerGrid';
@@ -213,8 +214,10 @@ export default function CardCreateScreen() {
     showError,
   ]);
 
+  const { formMaxWidth } = useBreakpoint();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 640}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-6 pb-4 pt-2">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />

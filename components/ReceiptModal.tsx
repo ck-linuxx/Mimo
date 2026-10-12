@@ -5,6 +5,7 @@ import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { AttachmentPicker } from 'components/AttachmentPicker';
 import { useAttachments } from 'hooks/useAttachments';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { generateId } from 'utils/generateId';
 import type { AttachmentLocal } from 'types';
 
@@ -25,6 +26,7 @@ export function ReceiptModal({
 }: ReceiptModalProps) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
+  const { isTablet } = useBreakpoint();
   const [attachments, setAttachments] = useState<AttachmentLocal[]>([]);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -80,8 +82,10 @@ export function ReceiptModal({
       <View
         style={{
           flex: 1,
-          justifyContent: 'flex-end',
+          justifyContent: isTablet ? 'center' : 'flex-end',
+          alignItems: isTablet ? 'center' : undefined,
           backgroundColor: 'rgba(0,0,0,0.5)',
+          padding: isTablet ? 24 : 0,
         }}
       >
         <View
@@ -89,6 +93,9 @@ export function ReceiptModal({
             backgroundColor: colors.cardBackground,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
+            borderRadius: isTablet ? 24 : undefined,
+            width: isTablet ? '100%' : undefined,
+            maxWidth: isTablet ? 520 : undefined,
             padding: 24,
           }}
         >

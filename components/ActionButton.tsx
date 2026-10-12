@@ -41,7 +41,7 @@ export function ActionButton({
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, { damping: 7, stiffness: 400, mass: 0.6 });
+    scale.value = withSpring(1, { damping: 16, stiffness: 400, mass: 0.5 });
   }, [scale]);
 
   return (

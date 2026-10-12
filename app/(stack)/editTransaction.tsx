@@ -23,6 +23,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm } from '@tanstack/react-form';
 import { z } from 'zod';
 import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { ActionButton } from 'components/ActionButton';
 import { AppButton } from 'components/AppButton';
 import { AttachmentViewer } from 'components/AttachmentViewer';
@@ -326,8 +327,10 @@ export default function EditTransactionScreen() {
     }
   };
 
+  const { formMaxWidth } = useBreakpoint();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 640}>
       {/* Header */}
       <View className="relative flex-row items-center justify-between px-4 py-4">
         <ActionButton icon="arrow-left" onPress={() => router.back()} />

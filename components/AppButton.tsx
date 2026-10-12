@@ -59,8 +59,7 @@ export function AppButton({
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    // Bounce de volta: ultrapassa 1.0 levemente e assenta
-    scale.value = withSpring(1, { damping: 7, stiffness: 400, mass: 0.6 });
+    scale.value = withSpring(1, { damping: 16, stiffness: 400, mass: 0.5 });
   }, [scale]);
 
   const isDisabled = disabled || loading;

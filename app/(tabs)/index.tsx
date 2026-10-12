@@ -4,7 +4,7 @@ import { ScrollView, View, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
-import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
+import { ScreenWrapper, useTabBarPadding } from 'components/ScreenWrapper';
 import { InfoCard } from 'components/InfoCard';
 import { DonutChart } from 'components/charts/DonutChart';
 import type { DonutChartDataItem } from 'components/charts/DonutChart';
@@ -19,12 +19,17 @@ import { formatCurrency } from 'utils/formatCurrency';
 import { Skeleton } from 'components/Skeleton';
 import { UpcomingGoalsCard } from 'components/UpcomingGoalsCard';
 
+import { useBreakpoint } from 'hooks/useBreakpoint';
+import { ResponsiveContainer } from 'components/ResponsiveContainer';
+
 // ─── Tela ─────────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
   const { askForReceipt } = useSettings();
+  const { isTablet, isNotebookMode } = useBreakpoint();
+  const tabBarPadding = useTabBarPadding();
 
   // ─── Estado de paginação das transações pendentes ─────────────────────────
   const [pendingPage, setPendingPage] = useState(0);
@@ -98,151 +103,199 @@ export default function HomeScreen() {
   const balanceIcon: React.ComponentProps<typeof Feather>['name'] =
     monthlyBalance >= 0 ? 'trending-up' : 'trending-down';
 
+  // ─── Blocos de conteúdo reutilizáveis ───────────────────────────────────────
+  const renderBalanceCard = (isColumns = false) => (
+    loadingMonthly ? (
+      <Skeleton height={isColumns ? 88 : 80} borderRadius={16} style={isColumns ? { flex: 1 } : { marginBottom: 16 }} />
+    ) : (
+      <InfoCard className={isColumns ? '' : 'mb-4'} columns={isColumns ? 3 : undefined}>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-3">
+            <View
+              className="w-12 h-12 rounded-xl items-center justify-center"
+              style={{ backgroundColor: `${balanceColor}18` }}
+            >
+              <Feather name="dollar-sign" size={24} color={balanceColor} />
+            </View>
+            <View>
+              <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm font-medium mb-0.5">
+                Resultado do Mês
+              </Text>
+              <Text
+                className="text-2xl font-bold"
+                style={{ color: balanceColor }}
+              >
+                {formatCurrency(monthlyBalance)}
+              </Text>
+            </View>
+          </View>
+          <View className="items-end gap-1">
+            <View className="flex-row items-center gap-1">
+              <Feather name={balanceIcon} size={15} color={balanceColor} />
+              <Text className="text-xs font-semibold" style={{ color: balanceColor }}>
+                {monthlyBalance >= 0 ? 'Positivo' : 'Negativo'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </InfoCard>
+    )
+  );
+
+  const renderIncomeCard = (columns = 2) => (
+    loadingMonthly ? (
+      <Skeleton height={88} borderRadius={16} style={{ flex: 1 }} />
+    ) : (
+      <InfoCard columns={columns}>
+        <View className="flex-row items-center gap-2 mb-2">
+          <View
+            className="w-8 h-8 rounded-lg items-center justify-center"
+            style={{ backgroundColor: `${colors.incomeColor}20` }}
+          >
+            <Feather name="trending-up" size={16} color={colors.incomeColor} />
+          </View>
+          <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm font-medium">
+            Receitas
+          </Text>
+        </View>
+        <Text className="font-bold text-lg" style={{ color: colors.incomeColor }}>
+          {formatCurrency(totalReceitas)}
+        </Text>
+      </InfoCard>
+    )
+  );
+
+  const renderExpenseCard = (columns = 2) => (
+    loadingMonthly ? (
+      <Skeleton height={88} borderRadius={16} style={{ flex: 1 }} />
+    ) : (
+      <InfoCard columns={columns}>
+        <View className="flex-row items-center gap-2 mb-2">
+          <View
+            className="w-8 h-8 rounded-lg items-center justify-center"
+            style={{ backgroundColor: `${colors.expenseColor}20` }}
+          >
+            <Feather name="trending-down" size={16} color={colors.expenseColor} />
+          </View>
+          <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm font-medium">
+            Despesas
+          </Text>
+        </View>
+        <Text className="font-bold text-lg" style={{ color: colors.expenseColor }}>
+          {formatCurrency(totalDespesas)}
+        </Text>
+      </InfoCard>
+    )
+  );
+
+  const renderDonutSection = () => (
+    <View className="mb-4">
+      <Text className="text-light-text-secondary dark:text-dark-text-secondary text-base font-semibold mb-3">
+        Despesas por Categoria
+      </Text>
+      {loadingMonthly ? (
+        <Skeleton height={312} borderRadius={16} />
+      ) : (
+        <InfoCard>
+          <DonutChart
+            data={donutData}
+            emptyText="Nenhuma despesa registrada este mês"
+          />
+        </InfoCard>
+      )}
+    </View>
+  );
+
+  const renderGoalsSection = () => (
+    <View className="mb-4">
+      <Text className="text-light-text-secondary dark:text-dark-text-secondary text-base font-semibold mb-3">
+        Próximas Metas
+      </Text>
+      <UpcomingGoalsCard />
+    </View>
+  );
+
+  const renderPendingSection = () => (
+    <View className="mb-4">
+      <Text className="text-light-text-secondary dark:text-dark-text-secondary text-base font-semibold mb-3">
+        Transações Pendentes
+      </Text>
+      <PaginatedList
+        data={pendingTransactions}
+        totalCount={pendingTotal}
+        page={pendingPage}
+        pageSize={pendingPageSize}
+        onPageChange={setPendingPage}
+        onPageSizeChange={(size) => {
+          setPendingPageSize(size);
+          setPendingPage(0);
+        }}
+        enableRowsCount
+        enablePagination
+        isLoading={loadingPending}
+        emptyIcon="check-circle"
+        emptyText="Nenhuma transação pendente"
+        emptySubtext="Você está em dia com todos os pagamentos"
+        renderItem={(transaction) => (
+          <TransactionItem
+            key={transaction.id}
+            transaction={transaction}
+            variant="flat"
+            askForReceipt={askForReceipt}
+            onStatusChanged={refetchPending}
+          />
+        )}
+      />
+    </View>
+  );
+
   return (
     <ScreenWrapper>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT, paddingHorizontal: 16, paddingTop: 16 }}
+        contentContainerStyle={{
+          paddingBottom: tabBarPadding,
+          paddingHorizontal: isNotebookMode ? 24 : 16,
+          paddingTop: 16,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Card Saldo Total ─────────────────────────────────────────── */}
-        {loadingMonthly ? (
-          <Skeleton height={80} borderRadius={16} style={{ marginBottom: 16 }} />
-        ) : (
-          <InfoCard className="mb-4">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-3">
-                <View
-                  className="w-12 h-12 rounded-xl items-center justify-center"
-                  style={{ backgroundColor: `${balanceColor}18` }}
-                >
-                  <Feather name="dollar-sign" size={24} color={balanceColor} />
-                </View>
-                <View>
-                  <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm font-medium mb-0.5">
-                    Resultado do Mês
-                  </Text>
-                  <Text
-                    className="text-2xl font-bold"
-                    style={{ color: balanceColor }}
-                  >
-                    {formatCurrency(monthlyBalance)}
-                  </Text>
-                </View>
+        <ResponsiveContainer type="content">
+          {/* ── Resumo de Saldo, Receitas e Despesas ─────────────────────────── */}
+          {isTablet ? (
+            <View className="flex-row gap-3 mb-4">
+              {renderBalanceCard(true)}
+              {renderIncomeCard(3)}
+              {renderExpenseCard(3)}
+            </View>
+          ) : (
+            <>
+              {renderBalanceCard(false)}
+              <View className="flex-row gap-3 mb-4">
+                {renderIncomeCard(2)}
+                {renderExpenseCard(2)}
               </View>
-              <View className="items-end gap-1">
-                <View className="flex-row items-center gap-1">
-                  <Feather name={balanceIcon} size={15} color={balanceColor} />
-                  <Text className="text-xs font-semibold" style={{ color: balanceColor }}>
-                    {monthlyBalance >= 0 ? 'Positivo' : 'Negativo'}
-                  </Text>
-                </View>
+            </>
+          )}
+
+          {/* ── Conteúdo Principal: 2 Colunas em Tablet, 1 Coluna em Celular ─── */}
+          {isTablet ? (
+            <View className="flex-row gap-4 items-start">
+              <View className="flex-1">
+                {renderDonutSection()}
+                {renderGoalsSection()}
+              </View>
+              <View className="flex-1">
+                {renderPendingSection()}
               </View>
             </View>
-          </InfoCard>
-        )}
-
-        {/* ── Cards Receitas / Despesas ─────────────────────────────────── */}
-        <View className="flex-row gap-3 mb-4">
-          {loadingMonthly ? (
-            <Skeleton height={88} borderRadius={16} style={{ flex: 1 }} />
           ) : (
-            <InfoCard columns={2}>
-              <View className="flex-row items-center gap-2 mb-2">
-                <View
-                  className="w-8 h-8 rounded-lg items-center justify-center"
-                  style={{ backgroundColor: `${colors.incomeColor}20` }}
-                >
-                  <Feather name="trending-up" size={16} color={colors.incomeColor} />
-                </View>
-                <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm font-medium">
-                  Receitas
-                </Text>
-              </View>
-              <Text className="font-bold text-lg" style={{ color: colors.incomeColor }}>
-                {formatCurrency(totalReceitas)}
-              </Text>
-            </InfoCard>
+            <>
+              {renderDonutSection()}
+              {renderGoalsSection()}
+              {renderPendingSection()}
+            </>
           )}
-
-          {loadingMonthly ? (
-            <Skeleton height={88} borderRadius={16} style={{ flex: 1 }} />
-          ) : (
-            <InfoCard columns={2}>
-              <View className="flex-row items-center gap-2 mb-2">
-                <View
-                  className="w-8 h-8 rounded-lg items-center justify-center"
-                  style={{ backgroundColor: `${colors.expenseColor}20` }}
-                >
-                  <Feather name="trending-down" size={16} color={colors.expenseColor} />
-                </View>
-                <Text className="text-light-text-secondary dark:text-dark-text-secondary text-sm font-medium">
-                  Despesas
-                </Text>
-              </View>
-              <Text className="font-bold text-lg" style={{ color: colors.expenseColor }}>
-                {formatCurrency(totalDespesas)}
-              </Text>
-            </InfoCard>
-          )}
-        </View>
-
-        {/* ── Donut: Despesas por Categoria ─────────────────────────────── */}
-        <View className="mb-4">
-          <Text className="text-light-text-secondary dark:text-dark-text-secondary text-base font-semibold mb-3">
-            Despesas por Categoria
-          </Text>
-          {loadingMonthly ? (
-            <Skeleton height={312} borderRadius={16} />
-          ) : (
-            <InfoCard>
-              <DonutChart
-                data={donutData}
-                emptyText="Nenhuma despesa registrada este mês"
-              />
-            </InfoCard>
-          )}
-        </View>
-
-        {/* ── Próximas Metas ───────────────────────────────────────────── */}
-        <View className="mb-4">
-          <Text className="text-light-text-secondary dark:text-dark-text-secondary text-base font-semibold mb-3">
-            Próximas Metas
-          </Text>
-          <UpcomingGoalsCard />
-        </View>
-
-        {/* ── Transações Pendentes ──────────────────────────────────────── */}
-        <View className="mb-4">
-          <Text className="text-light-text-secondary dark:text-dark-text-secondary text-base font-semibold mb-3">
-            Transações Pendentes
-          </Text>
-          <PaginatedList
-              data={pendingTransactions}
-              totalCount={pendingTotal}
-              page={pendingPage}
-              pageSize={pendingPageSize}
-              onPageChange={setPendingPage}
-              onPageSizeChange={(size) => {
-                setPendingPageSize(size);
-                setPendingPage(0);
-              }}
-              enableRowsCount
-              enablePagination
-              isLoading={loadingPending}
-              emptyIcon="check-circle"
-              emptyText="Nenhuma transação pendente"
-              emptySubtext="Você está em dia com todos os pagamentos"
-              renderItem={(transaction) => (
-                <TransactionItem
-                  key={transaction.id}
-                  transaction={transaction}
-                  variant="flat"
-                  askForReceipt={askForReceipt}
-                  onStatusChanged={refetchPending}
-                />
-              )}
-            />
-        </View>
+        </ResponsiveContainer>
       </ScrollView>
     </ScreenWrapper>
   );

@@ -16,6 +16,7 @@ import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { ScreenWrapper } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { ActionButton } from 'components/ActionButton';
 import { StatCard } from 'components/StatCard';
 import { CustomAlert } from 'components/CustomAlert';
@@ -175,8 +176,10 @@ export default function GoalDetailScreen() {
     ? calcMonthsRange(new Date(goal.startAt!), new Date(goal.finishAt!))
     : 0;
 
+  const { formMaxWidth } = useBreakpoint();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 720}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pb-4 pt-2">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />
