@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { EntityIcon } from 'components/bank/BankLogo';
 import {
   ActivityIndicator,
   FlatList,
@@ -70,11 +71,7 @@ function AccountItem({ item, onDeactivate, colors }: AccountItemProps) {
             <View
               className="w-12 h-12 rounded-xl items-center justify-center"
               style={{ backgroundColor: iconBg }}>
-              <Feather
-                name={(item.icon as React.ComponentProps<typeof Feather>['name']) ?? 'briefcase'}
-                size={22}
-                color={item.color ?? colors.primaryGold}
-              />
+              <EntityIcon icon={item.icon} size={26} color={item.color ?? colors.primaryGold} />
             </View>
 
             <View className="flex-1">

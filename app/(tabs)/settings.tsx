@@ -22,6 +22,7 @@ import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
 import type { ThemeValue } from 'db/schema';
 import type { Account, Card } from 'types';
 import { SPRING_BOUNCE, SPRING_MODAL } from 'constants/animations';
+import { EntityIcon } from 'components/bank/BankLogo';
 
 // ─── ConfigCard ───────────────────────────────────────────────────────────────
 
@@ -263,9 +264,9 @@ function AccountCard({ item }: { item: Account }) {
         <View
           className="mr-3 h-10 w-10 items-center justify-center rounded-xl"
           style={{ backgroundColor: accentColor + '20' }}>
-          <Feather
-            name={(item.icon as React.ComponentProps<typeof Feather>['name']) ?? 'briefcase'}
-            size={18}
+          <EntityIcon
+            icon={item.icon}
+            size={22}
             color={accentColor}
           />
         </View>
@@ -333,7 +334,12 @@ function CreditCardItem({ item, pendingAmount }: { item: Card; pendingAmount: nu
         <View
           className="mr-3 h-10 w-10 items-center justify-center rounded-xl"
           style={{ backgroundColor: accentColor + '20' }}>
-          <Feather name="credit-card" size={18} color={accentColor} />
+          <EntityIcon
+            icon={item.icon}
+            size={22}
+            color={accentColor}
+            fallback="credit-card"
+          />
         </View>
         <View className="flex-1">
           <Text

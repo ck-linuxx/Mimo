@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { EntityIcon } from 'components/bank/BankLogo';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -295,11 +296,7 @@ export default function AccountDetailScreen() {
             <View
               className="w-24 h-24 rounded-3xl items-center justify-center mb-4"
               style={{ backgroundColor: accentColor + '25' }}>
-              <Feather
-                name={(account.icon as React.ComponentProps<typeof Feather>['name']) ?? 'briefcase'}
-                size={40}
-                color={accentColor}
-              />
+              <EntityIcon icon={account.icon} size={44} color={accentColor} />
             </View>
             <Text className="text-2xl font-bold text-center" style={{ color: colors.textPrimary }}>
               {account.name}

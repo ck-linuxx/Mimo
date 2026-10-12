@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { EntityIcon } from 'components/bank/BankLogo';
 import {
   ScrollView,
   Text,
@@ -233,7 +234,7 @@ export default function CardDetailScreen() {
             <View
               className="w-20 h-20 rounded-3xl items-center justify-center mb-3"
               style={{ backgroundColor: accentColor + '25' }}>
-              <Feather name="credit-card" size={36} color={accentColor} />
+              <EntityIcon icon={card?.icon} size={40} color={accentColor} fallback="credit-card" />
             </View>
             <Text
               className="text-2xl font-bold text-center"

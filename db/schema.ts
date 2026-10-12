@@ -59,6 +59,7 @@ export const cards = sqliteTable('cards', {
   dueDay: integer('due_day'),
   accountId: text('account_id').references(() => accounts.id),
   color: text('color'),
+  icon: text('icon'),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at').notNull(),
 });

@@ -5,6 +5,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Feather } from '@expo/vector-icons';
+import {
+  useFonts,
+  Inter_300Light,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 
 import migrations from 'drizzle/migrations';
 import { db, expo } from 'db/client';
@@ -130,6 +139,16 @@ function BiometricGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter: Inter_400Regular,
+    Inter_300Light,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
   const [migrationState, setMigrationState] = useState<{ success: boolean; error?: Error }>({
     success: false,
   });
@@ -196,7 +215,7 @@ export default function RootLayout() {
     );
   }
 
-  if (!dbReady) {
+  if (!dbReady || (!fontsLoaded && !fontError)) {
     return (
       <View
         style={{

@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { EntityIcon } from 'components/bank/BankLogo';
 import {
   ActivityIndicator,
   FlatList,
@@ -230,11 +231,7 @@ export default function PaymentMethodSelectScreen() {
                   <View
                     className="w-11 h-11 rounded-xl items-center justify-center"
                     style={{ backgroundColor: (item.color ?? colors.expenseColor) + '25' }}>
-                    <Feather
-                      name="credit-card"
-                      size={20}
-                      color={item.color ?? colors.expenseColor}
-                    />
+                    <EntityIcon icon={item.icon} size={24} color={item.color ?? colors.expenseColor} fallback="credit-card" />
                   </View>
                   <View className="flex-1">
                     <Text className="text-base font-medium" style={{ color: colors.textPrimary }}>
@@ -292,11 +289,7 @@ export default function PaymentMethodSelectScreen() {
                   <View
                     className="w-11 h-11 rounded-xl items-center justify-center"
                     style={{ backgroundColor: (item.color ?? colors.primaryGold) + '25' }}>
-                    <Feather
-                      name={(item.icon as React.ComponentProps<typeof Feather>['name']) ?? 'briefcase'}
-                      size={20}
-                      color={item.color ?? colors.primaryGold}
-                    />
+                    <EntityIcon icon={item.icon} size={24} color={item.color ?? colors.primaryGold} />
                   </View>
                   <View className="flex-1">
                     <Text className="text-base font-medium" style={{ color: colors.textPrimary }}>

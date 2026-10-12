@@ -38,6 +38,7 @@ import {
   PAYMENT_TYPE_OPTIONS,
 } from 'utils/transactionLabels';
 import { computeCardDueDate } from 'utils/cardDueDate';
+import { EntityIcon } from 'components/bank/BankLogo';
 
 // ─── Schema ────────────────────────────────────────────────────────────────────
 
@@ -879,9 +880,9 @@ export default function AddTransaction() {
                                   (selectedAccount.color ?? colors.primaryGold) + '20',
                               }}
                             >
-                              <Feather
-                                name={(selectedAccount.icon as any) ?? 'briefcase'}
-                                size={20}
+                              <EntityIcon
+                                icon={selectedAccount.icon}
+                                size={22}
                                 color={selectedAccount.color ?? colors.primaryGold}
                               />
                             </View>
@@ -906,10 +907,11 @@ export default function AddTransaction() {
                                   (selectedCard.color ?? colors.expenseColor) + '20',
                               }}
                             >
-                              <Feather
-                                name="credit-card"
-                                size={20}
+                              <EntityIcon
+                                icon={selectedCard.icon}
+                                size={22}
                                 color={selectedCard.color ?? colors.expenseColor}
+                                fallback="credit-card"
                               />
                             </View>
                             <View>

@@ -34,6 +34,7 @@ Cartões de crédito do usuário. Todo cartão cadastrado é implicitamente de c
 - `closingDay` / `dueDay`: dia de fechamento e vencimento da fatura (1–31).
 - `creditLimit`: limite do cartão em reais decimais (nullable).
 - Vinculado a uma `account` para fins de organização.
+- `icon`: `bank:<code>` quando um banco é escolhido (logo em `components/bank`).
 
 ### `financial_goals`
 Metas financeiras (ex: "Viagem para o Japão", "Reserva de emergência").

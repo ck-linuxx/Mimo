@@ -1,3 +1,54 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root,
+  html,
+  body {
+    font-family: 'Inter_400Regular', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      sans-serif;
+  }
+}
+
+.font-sans,
+.font-inter,
+.font-inter-regular {
+  font-family: 'Inter_400Regular', 'Inter', sans-serif;
+}
+
+.font-light,
+.font-inter-light {
+  font-family: 'Inter_300Light', 'Inter', sans-serif;
+  font-weight: 300;
+}
+
+.font-normal {
+  font-family: 'Inter_400Regular', 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+.font-medium,
+.font-inter-medium {
+  font-family: 'Inter_500Medium', 'Inter', sans-serif;
+  font-weight: 500;
+}
+
+.font-semibold,
+.font-inter-semibold {
+  font-family: 'Inter_600SemiBold', 'Inter', sans-serif;
+  font-weight: 600;
+}
+
+.font-bold,
+.font-inter-bold {
+  font-family: 'Inter_700Bold', 'Inter', sans-serif;
+  font-weight: 700;
+}
+
+.font-extrabold,
+.font-inter-extrabold {
+  font-family: 'Inter_800ExtraBold', 'Inter', sans-serif;
+  font-weight: 800;
+}
+
