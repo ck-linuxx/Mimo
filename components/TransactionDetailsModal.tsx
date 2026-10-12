@@ -18,6 +18,7 @@ import { useGroupPaidCount } from 'hooks/transactions/useGroupPaidCount';
 import { useGroupAttachments } from 'hooks/attachments/useGroupAttachments';
 import type { TransactionWithCategory, Attachment } from 'types';
 import { formatCurrency } from 'utils/formatCurrency';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 
 interface TransactionDetailsModalProps {
   visible: boolean;
@@ -90,6 +91,7 @@ export function TransactionDetailsModal({
 }: TransactionDetailsModalProps) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
+  const { isTablet } = useBreakpoint();
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
 
   const { data: allAttachments, loading: loadingAttachments } = useAttachments(
@@ -131,17 +133,30 @@ export function TransactionDetailsModal({
   return (
     <>
       <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: isTablet ? 'center' : 'flex-end' }}>
           <View
-            style={{
-              flex: 1,
-              marginTop: 48,
-              backgroundColor: colors.background,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              overflow: 'hidden',
-              gap: 8,
-            }}
+            style={[
+              {
+                backgroundColor: colors.background,
+                overflow: 'hidden',
+                gap: 8,
+              },
+              isTablet
+                ? {
+                    width: '100%',
+                    maxWidth: 600,
+                    alignSelf: 'center',
+                    borderRadius: 24,
+                    maxHeight: '85%',
+                    marginVertical: 40,
+                  }
+                : {
+                    flex: 1,
+                    marginTop: 48,
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                  },
+            ]}
           >
             {/* Hero header */}
             <View

@@ -10,6 +10,7 @@ import { useImportSave } from 'hooks/useImportSave';
 import { useRestoreBackup } from 'hooks/useRestoreBackup';
 import { useImportFromDb } from 'hooks/useImportFromDb';
 import { ScreenWrapper } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { CustomAlert } from 'components/CustomAlert';
 import { ActionButton } from 'components/ActionButton';
 import { ReviewList } from 'components/import/ReviewList';
@@ -229,8 +230,10 @@ export default function ImportDataScreen() {
 
   const footerDisabled = reviewItems.length === 0 || phase === 'saving';
 
+  const { formMaxWidth } = useBreakpoint();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 720}>
       {/* Header */}
       <View className="flex-row items-center gap-3 px-5 pb-4 pt-2">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />

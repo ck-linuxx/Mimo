@@ -20,6 +20,7 @@ import { cards } from 'db/schema';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { ScreenWrapper } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { ActionButton } from 'components/ActionButton';
 import { InfoCard } from 'components/InfoCard';
 import { PaginatedList } from 'components/PaginatedList';
@@ -32,11 +33,8 @@ import { useCardTransactionsPaginated } from 'hooks/transactions/useCardTransact
 import { useCardCategoryTotals } from 'hooks/transactions/useCardCategoryTotals';
 import { useCardMonthlyTotals } from 'hooks/transactions/useCardMonthlyTotals';
 import { formatCurrency } from 'utils/formatCurrency';
+import { SPRING_BOUNCE } from 'constants/animations';
 import type { Card } from 'types';
-
-// ─── Spring constants ─────────────────────────────────────────────────────────
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
 
 // ─── Opções de meses disponíveis no seletor ───────────────────────────────────
 
@@ -107,6 +105,7 @@ export default function CardDetailScreen() {
   const colors = theme === 'dark' ? darkColors : lightColors;
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { contentMaxWidth } = useBreakpoint();
 
   // ─── Estado do cartão ──────────────────────────────────────────────────────
 
@@ -211,7 +210,7 @@ export default function CardDetailScreen() {
   }
 
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={contentMaxWidth ?? 840}>
       {/* ── Header fixo ────────────────────────────────────────────────── */}
       <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />

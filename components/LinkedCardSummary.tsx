@@ -9,11 +9,8 @@ import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { formatCurrency } from 'utils/formatCurrency';
+import { SPRING_BOUNCE } from 'constants/animations';
 import type { Card } from 'types/card';
-
-// ─── Spring constants ─────────────────────────────────────────────────────────
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 

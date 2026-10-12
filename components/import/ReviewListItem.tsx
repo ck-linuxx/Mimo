@@ -7,8 +7,7 @@ import { darkColors, lightColors } from 'themes/colors';
 import { formatCurrency } from 'utils/formatCurrency';
 import { TransactionTypeEnum, TransactionStatusEnum } from 'types';
 import type { ImportedTransaction } from 'utils/importData/types';
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
+import { SPRING_BOUNCE } from 'constants/animations';
 
 interface ReviewListItemProps {
   item: ImportedTransaction;

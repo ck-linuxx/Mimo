@@ -13,9 +13,7 @@ import { ActionButton } from 'components/ActionButton';
 import { Skeleton } from 'components/Skeleton';
 import { TransactionItem } from 'components/TransactionItem';
 import type { TransactionWithCategory } from 'types/transactionView';
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
-const SPRING_MODAL = { damping: 55, stiffness: 700 } as const;
+import { SPRING_BOUNCE, SPRING_MODAL } from 'constants/animations';
 
 interface SelectorItem {
   id: string;

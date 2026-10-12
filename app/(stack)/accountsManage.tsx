@@ -23,15 +23,13 @@ import { useTheme } from 'themes';
 import { useAccounts } from 'hooks/useAccounts';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { ScreenWrapper } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { ActionButton } from 'components/ActionButton';
 import { CustomAlert } from 'components/CustomAlert';
 import { formatCurrency } from 'utils/formatCurrency';
 import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
+import { SPRING_BOUNCE } from 'constants/animations';
 import type { Account } from 'types';
-
-// ─── Spring constants ─────────────────────────────────────────────────────────
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
 
 // ─── AccountItem ──────────────────────────────────────────────────────────────
 
@@ -144,8 +142,10 @@ export default function AccountsManageScreen() {
     [showDestructive, showError, refetch],
   );
 
+  const { formMaxWidth } = useBreakpoint();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 720}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-2 pb-4">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />

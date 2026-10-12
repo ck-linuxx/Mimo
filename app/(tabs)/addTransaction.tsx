@@ -14,7 +14,8 @@ import { useRouter } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { transactions, transactionGroups, financialGoals } from 'db/schema';
 import { generateId } from 'utils/generateId';
-import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
+import { ScreenWrapper, useTabBarPadding } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import {
   TransactionTypeEnum,
   TransactionStatusEnum,
@@ -122,6 +123,8 @@ export default function AddTransaction() {
   const colors = theme === 'dark' ? darkColors : lightColors;
   const { alertConfig, visible, hideAlert, showSuccess, showError, showWarning } = useCustomAlert();
   const router = useRouter();
+  const { formMaxWidth, isNotebookMode } = useBreakpoint();
+  const tabBarPadding = useTabBarPadding();
 
   // Seleções por objeto para exibição
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -359,7 +362,10 @@ export default function AddTransaction() {
   );
 
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper
+      style={{ backgroundColor: colors.background }}
+      maxWidth={isNotebookMode ? 880 : formMaxWidth ?? 640}
+    >
       <View className="px-6 pt-4 pb-2">
         <Text className="text-2xl font-bold text-center" style={{ color: colors.textPrimary }}>
           Adicionar Transação
@@ -369,7 +375,11 @@ export default function AddTransaction() {
       <ScrollView
         className="flex-1 px-6"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT, gap: 24 }}
+        contentContainerStyle={{
+          paddingHorizontal: isNotebookMode ? 24 : 0,
+          paddingBottom: tabBarPadding + 16,
+          gap: 24,
+        }}
       >
         {/* Tipo de Transação */}
         <form.Field name="type">
@@ -440,106 +450,107 @@ export default function AddTransaction() {
           )}
         </form.Field>
 
-        {/* Valor */}
-        <form.Field
-          name="amount"
-          
-        >
-          {(field) => (
-            <View>
-              <Text
-                className="font-semibold text-base mb-3"
-                style={{ color: colors.textPrimary }}
-              >
-                Valor
-              </Text>
-              <View
-                className="flex-row items-center rounded-2xl px-4 py-3"
-                style={{
-                  backgroundColor: colors.cardBackground,
-                  borderWidth: 1,
-                  borderColor: field.state.meta.errors.length > 0
-                    ? colors.expenseColor
-                    : colors.borderColor,
-                }}
-              >
-                <Text className="text-lg mr-2" style={{ color: colors.textSecondary }}>
-                  R$
-                </Text>
-                <TextInput
-                  className="flex-1 text-2xl font-semibold"
-                  style={{ color: colors.textPrimary }}
-                  placeholder="0,00"
-                  placeholderTextColor={colors.textSecondary}
-                  value={amountDisplay}
-                  onChangeText={(text) => handleAmountChange(text, field.handleChange)}
-                  keyboardType="numeric"
-                />
-              </View>
-              {field.state.meta.errors[0] && (
-                <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
-                  {String(field.state.meta.errors[0])}
-                </Text>
-              )}
+        {/* Linha 1 de campos: Valor e Nome (2 por linha em tablet landscape) */}
+        {isNotebookMode ? (
+          <View className="flex-row gap-4 items-start">
+            {/* Valor */}
+            <View className="flex-1">
+              <form.Field name="amount">
+                {(field) => (
+                  <View>
+                    <Text
+                      className="font-semibold text-base mb-3"
+                      style={{ color: colors.textPrimary }}
+                    >
+                      Valor
+                    </Text>
+                    <View
+                      className="flex-row items-center rounded-2xl px-4 py-3"
+                      style={{
+                        backgroundColor: colors.cardBackground,
+                        borderWidth: 1,
+                        borderColor: field.state.meta.errors.length > 0
+                          ? colors.expenseColor
+                          : colors.borderColor,
+                      }}
+                    >
+                      <Text className="text-lg mr-2" style={{ color: colors.textSecondary }}>
+                        R$
+                      </Text>
+                      <TextInput
+                        className="flex-1 text-2xl font-semibold"
+                        style={{ color: colors.textPrimary }}
+                        placeholder="0,00"
+                        placeholderTextColor={colors.textSecondary}
+                        value={amountDisplay}
+                        onChangeText={(text) => handleAmountChange(text, field.handleChange)}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    {field.state.meta.errors[0] && (
+                      <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
+                        {String(field.state.meta.errors[0])}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </form.Field>
             </View>
-          )}
-        </form.Field>
 
-        {/* Nome / Descrição */}
-        <form.Field
-          name="description"
-          
-        >
-          {(field) => (
-            <View>
-              <Text
-                className="font-semibold text-base mb-3"
-                style={{ color: colors.textPrimary }}
-              >
-                Nome
-              </Text>
-              <View
-                className="rounded-2xl px-4 py-3"
-                style={{
-                  backgroundColor: colors.cardBackground,
-                  borderWidth: 1,
-                  borderColor: field.state.meta.errors.length > 0
-                    ? colors.expenseColor
-                    : colors.borderColor,
-                }}
-              >
-                <TextInput
-                  className="text-base"
-                  style={{ color: colors.textPrimary }}
-                  placeholder="Ex: Almoço no restaurante"
-                  placeholderTextColor={colors.textSecondary}
-                  value={field.state.value}
-                  onChangeText={field.handleChange}
-                />
-              </View>
-              {field.state.meta.errors[0] && (
-                <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
-                  {String(field.state.meta.errors[0])}
-                </Text>
-              )}
+            {/* Nome / Descrição */}
+            <View className="flex-1">
+              <form.Field name="description">
+                {(field) => (
+                  <View>
+                    <Text
+                      className="font-semibold text-base mb-3"
+                      style={{ color: colors.textPrimary }}
+                    >
+                      Nome
+                    </Text>
+                    <View
+                      className="rounded-2xl px-4 py-3"
+                      style={{
+                        backgroundColor: colors.cardBackground,
+                        borderWidth: 1,
+                        borderColor: field.state.meta.errors.length > 0
+                          ? colors.expenseColor
+                          : colors.borderColor,
+                      }}
+                    >
+                      <TextInput
+                        className="text-base"
+                        style={{ color: colors.textPrimary }}
+                        placeholder="Ex: Almoço no restaurante"
+                        placeholderTextColor={colors.textSecondary}
+                        value={field.state.value}
+                        onChangeText={field.handleChange}
+                      />
+                    </View>
+                    {field.state.meta.errors[0] && (
+                      <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
+                        {String(field.state.meta.errors[0])}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </form.Field>
             </View>
-          )}
-        </form.Field>
-
-        {/* Categoria */}
-        <form.Field name="categoryId">
-          {(field) => (
-            <form.Subscribe selector={(s) => s.values.type}>
-              {(type) => (
+          </View>
+        ) : (
+          <>
+            {/* Valor */}
+            <form.Field name="amount">
+              {(field) => (
                 <View>
                   <Text
                     className="font-semibold text-base mb-3"
                     style={{ color: colors.textPrimary }}
                   >
-                    Categoria
+                    Valor
                   </Text>
-                  <TouchableOpacity
-                    className="rounded-2xl p-4 flex-row items-center justify-between"
+                  <View
+                    className="flex-row items-center rounded-2xl px-4 py-3"
                     style={{
                       backgroundColor: colors.cardBackground,
                       borderWidth: 1,
@@ -547,57 +558,20 @@ export default function AddTransaction() {
                         ? colors.expenseColor
                         : colors.borderColor,
                     }}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      setSelectionCallback<Category>('category', (cat) => {
-                        setSelectedCategory(cat);
-                        field.handleChange(cat.id);
-                      });
-                      router.push({
-                        pathname: '/(stack)/categorySelect',
-                        params: {
-                          transactionType: type,
-                          selectedId: field.state.value,
-                        },
-                      });
-                    }}
                   >
-                    {selectedCategory ? (
-                      <View className="flex-row items-center gap-3">
-                        <View
-                          className="w-10 h-10 rounded-lg items-center justify-center"
-                          style={{
-                            backgroundColor: (selectedCategory.color ?? colors.primaryGold) + '20',
-                          }}
-                        >
-                          <Feather
-                            name={(selectedCategory.icon as any) ?? 'tag'}
-                            size={20}
-                            color={selectedCategory.color ?? colors.primaryGold}
-                          />
-                        </View>
-                        <Text
-                          className="text-base font-medium"
-                          style={{ color: colors.textPrimary }}
-                        >
-                          {selectedCategory.name}
-                        </Text>
-                      </View>
-                    ) : (
-                      <View className="flex-row items-center gap-3">
-                        <View
-                          className="w-10 h-10 rounded-lg items-center justify-center"
-                          style={{ backgroundColor: colors.iconBackground }}
-                        >
-                          <Feather name="tag" size={20} color={colors.textSecondary} />
-                        </View>
-                        <Text className="text-base" style={{ color: colors.textSecondary }}>
-                          Escolha uma categoria
-                        </Text>
-                      </View>
-                    )}
-                    <Feather name="chevron-right" size={20} color={colors.textSecondary} />
-                  </TouchableOpacity>
+                    <Text className="text-lg mr-2" style={{ color: colors.textSecondary }}>
+                      R$
+                    </Text>
+                    <TextInput
+                      className="flex-1 text-2xl font-semibold"
+                      style={{ color: colors.textPrimary }}
+                      placeholder="0,00"
+                      placeholderTextColor={colors.textSecondary}
+                      value={amountDisplay}
+                      onChangeText={(text) => handleAmountChange(text, field.handleChange)}
+                      keyboardType="numeric"
+                    />
+                  </View>
                   {field.state.meta.errors[0] && (
                     <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
                       {String(field.state.meta.errors[0])}
@@ -605,20 +579,246 @@ export default function AddTransaction() {
                   )}
                 </View>
               )}
-            </form.Subscribe>
-          )}
-        </form.Field>
+            </form.Field>
 
-        {/* Data */}
-        <form.Field name="date">
-          {(field) => (
-            <DatePicker
-              data={field.state.value}
-              onChangeData={field.handleChange}
-              label="Data da Transação"
-            />
-          )}
-        </form.Field>
+            {/* Nome / Descrição */}
+            <form.Field name="description">
+              {(field) => (
+                <View>
+                  <Text
+                    className="font-semibold text-base mb-3"
+                    style={{ color: colors.textPrimary }}
+                  >
+                    Nome
+                  </Text>
+                  <View
+                    className="rounded-2xl px-4 py-3"
+                    style={{
+                      backgroundColor: colors.cardBackground,
+                      borderWidth: 1,
+                      borderColor: field.state.meta.errors.length > 0
+                        ? colors.expenseColor
+                        : colors.borderColor,
+                    }}
+                  >
+                    <TextInput
+                      className="text-base"
+                      style={{ color: colors.textPrimary }}
+                      placeholder="Ex: Almoço no restaurante"
+                      placeholderTextColor={colors.textSecondary}
+                      value={field.state.value}
+                      onChangeText={field.handleChange}
+                    />
+                  </View>
+                  {field.state.meta.errors[0] && (
+                    <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
+                      {String(field.state.meta.errors[0])}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </form.Field>
+          </>
+        )}
+
+        {/* Linha 2 de campos: Categoria e Data (2 por linha em tablet landscape) */}
+        {isNotebookMode ? (
+          <View className="flex-row gap-4 items-start">
+            {/* Categoria */}
+            <View className="flex-1">
+              <form.Field name="categoryId">
+                {(field) => (
+                  <form.Subscribe selector={(s) => s.values.type}>
+                    {(type) => (
+                      <View>
+                        <Text
+                          className="font-semibold text-base mb-3"
+                          style={{ color: colors.textPrimary }}
+                        >
+                          Categoria
+                        </Text>
+                        <TouchableOpacity
+                          className="rounded-2xl p-4 flex-row items-center justify-between"
+                          style={{
+                            backgroundColor: colors.cardBackground,
+                            borderWidth: 1,
+                            borderColor: field.state.meta.errors.length > 0
+                              ? colors.expenseColor
+                              : colors.borderColor,
+                          }}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            setSelectionCallback<Category>('category', (cat) => {
+                              setSelectedCategory(cat);
+                              field.handleChange(cat.id);
+                            });
+                            router.push({
+                              pathname: '/(stack)/categorySelect',
+                              params: {
+                                transactionType: type,
+                                selectedId: field.state.value,
+                              },
+                            });
+                          }}
+                        >
+                          {selectedCategory ? (
+                            <View className="flex-row items-center gap-3">
+                              <View
+                                className="w-10 h-10 rounded-lg items-center justify-center"
+                                style={{
+                                  backgroundColor: (selectedCategory.color ?? colors.primaryGold) + '20',
+                                }}
+                              >
+                                <Feather
+                                  name={(selectedCategory.icon as any) ?? 'tag'}
+                                  size={20}
+                                  color={selectedCategory.color ?? colors.primaryGold}
+                                />
+                              </View>
+                              <Text
+                                className="text-base font-medium"
+                                style={{ color: colors.textPrimary }}
+                              >
+                                {selectedCategory.name}
+                              </Text>
+                            </View>
+                          ) : (
+                            <View className="flex-row items-center gap-3">
+                              <View
+                                className="w-10 h-10 rounded-lg items-center justify-center"
+                                style={{ backgroundColor: colors.iconBackground }}
+                              >
+                                <Feather name="tag" size={20} color={colors.textSecondary} />
+                              </View>
+                              <Text className="text-base" style={{ color: colors.textSecondary }}>
+                                Escolha uma categoria
+                              </Text>
+                            </View>
+                          )}
+                          <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                        {field.state.meta.errors[0] && (
+                          <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
+                            {String(field.state.meta.errors[0])}
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  </form.Subscribe>
+                )}
+              </form.Field>
+            </View>
+
+            {/* Data */}
+            <View className="flex-1">
+              <form.Field name="date">
+                {(field) => (
+                  <DatePicker
+                    data={field.state.value}
+                    onChangeData={field.handleChange}
+                    label="Data da Transação"
+                  />
+                )}
+              </form.Field>
+            </View>
+          </View>
+        ) : (
+          <>
+            {/* Categoria */}
+            <form.Field name="categoryId">
+              {(field) => (
+                <form.Subscribe selector={(s) => s.values.type}>
+                  {(type) => (
+                    <View>
+                      <Text
+                        className="font-semibold text-base mb-3"
+                        style={{ color: colors.textPrimary }}
+                      >
+                        Categoria
+                      </Text>
+                      <TouchableOpacity
+                        className="rounded-2xl p-4 flex-row items-center justify-between"
+                        style={{
+                          backgroundColor: colors.cardBackground,
+                          borderWidth: 1,
+                          borderColor: field.state.meta.errors.length > 0
+                            ? colors.expenseColor
+                            : colors.borderColor,
+                        }}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          setSelectionCallback<Category>('category', (cat) => {
+                            setSelectedCategory(cat);
+                            field.handleChange(cat.id);
+                          });
+                          router.push({
+                            pathname: '/(stack)/categorySelect',
+                            params: {
+                              transactionType: type,
+                              selectedId: field.state.value,
+                            },
+                          });
+                        }}
+                      >
+                        {selectedCategory ? (
+                          <View className="flex-row items-center gap-3">
+                            <View
+                              className="w-10 h-10 rounded-lg items-center justify-center"
+                              style={{
+                                backgroundColor: (selectedCategory.color ?? colors.primaryGold) + '20',
+                              }}
+                            >
+                              <Feather
+                                name={(selectedCategory.icon as any) ?? 'tag'}
+                                size={20}
+                                color={selectedCategory.color ?? colors.primaryGold}
+                              />
+                            </View>
+                            <Text
+                              className="text-base font-medium"
+                              style={{ color: colors.textPrimary }}
+                            >
+                              {selectedCategory.name}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View className="flex-row items-center gap-3">
+                            <View
+                              className="w-10 h-10 rounded-lg items-center justify-center"
+                              style={{ backgroundColor: colors.iconBackground }}
+                            >
+                              <Feather name="tag" size={20} color={colors.textSecondary} />
+                            </View>
+                            <Text className="text-base" style={{ color: colors.textSecondary }}>
+                              Escolha uma categoria
+                            </Text>
+                          </View>
+                        )}
+                        <Feather name="chevron-right" size={20} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                      {field.state.meta.errors[0] && (
+                        <Text className="text-sm mt-1" style={{ color: colors.expenseColor }}>
+                          {String(field.state.meta.errors[0])}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </form.Subscribe>
+              )}
+            </form.Field>
+
+            {/* Data */}
+            <form.Field name="date">
+              {(field) => (
+                <DatePicker
+                  data={field.state.value}
+                  onChangeData={field.handleChange}
+                  label="Data da Transação"
+                />
+              )}
+            </form.Field>
+          </>
+        )}
 
 
         {/* Conta / Cartão */}

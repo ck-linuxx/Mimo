@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
+import { ScreenWrapper, useTabBarPadding } from 'components/ScreenWrapper';
 import { ActionButton } from 'components/ActionButton';
 import { Loading } from 'components/Loading';
 import { TransactionItem } from 'components/TransactionItem';
@@ -15,6 +15,8 @@ import { useTheme } from 'themes';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
 import type { TransactionWithCategory } from 'types';
 import { formatCurrency } from 'utils/formatCurrency';
+
+import { useBreakpoint } from 'hooks/useBreakpoint';
 
 // Helpers
 
@@ -137,8 +139,11 @@ export default function TransactionsScreen() {
     return `Fatura: ${MONTH_NAMES_SHORT[dueMonth]}/${String(dueYear).slice(2)}`;
   };
 
+  const { contentMaxWidth, isNotebookMode } = useBreakpoint();
+  const tabBarPadding = useTabBarPadding();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={contentMaxWidth}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 }}>
         <ActionButton icon="chevron-left" onPress={() => navegarMes('anterior')} />
         <View style={{ flex: 1, alignItems: 'center' }}>
@@ -165,7 +170,14 @@ export default function TransactionsScreen() {
           data={groups}
           keyExtractor={(item) => item.date}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 16, paddingBottom: TAB_BAR_HEIGHT }}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+          contentContainerStyle={{
+            padding: isNotebookMode ? 24 : 16,
+            paddingBottom: tabBarPadding,
+          }}
           ListHeaderComponent={
             hasData ? (
               <View style={{ gap: 12, marginBottom: 16 }}>

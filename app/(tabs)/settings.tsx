@@ -14,17 +14,14 @@ import { useCustomAlert } from 'hooks/useCustomAlert';
 import { useExportData } from 'hooks/useExportData';
 import { useAccountBalance } from 'hooks/useAccountBalance';
 import { useCardsPendingTotals } from 'hooks/transactions/useCardsPendingTotals';
-import { ScreenWrapper, TAB_BAR_HEIGHT } from 'components/ScreenWrapper';
+import { ScreenWrapper, useTabBarPadding } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { CustomAlert } from 'components/CustomAlert';
 import { formatCurrency } from 'utils/formatCurrency';
 import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
 import type { ThemeValue } from 'db/schema';
 import type { Account, Card } from 'types';
-
-// ─── Spring constants ─────────────────────────────────────────────────────────
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
-const SPRING_MODAL = { damping: 55, stiffness: 700 } as const;
+import { SPRING_BOUNCE, SPRING_MODAL } from 'constants/animations';
 
 // ─── ConfigCard ───────────────────────────────────────────────────────────────
 
@@ -383,6 +380,8 @@ export default function SettingsScreen() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
   const router = useRouter();
+  const { formMaxWidth, isNotebookMode } = useBreakpoint();
+  const tabBarPadding = useTabBarPadding();
 
   const {
     biometricsEnabled,
@@ -584,10 +583,16 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper
+      style={{ backgroundColor: colors.background }}
+      maxWidth={isNotebookMode ? 960 : formMaxWidth ?? 720}
+    >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TAB_BAR_HEIGHT + 16 }}>
+        contentContainerStyle={{
+          paddingHorizontal: isNotebookMode ? 24 : 20,
+          paddingBottom: tabBarPadding + 16,
+        }}>
         {/* Header */}
         <View className="pb-6 pt-4">
           <Text className="mb-1 text-2xl font-bold" style={{ color: colors.textPrimary }}>
@@ -685,51 +690,126 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Security */}
-        <ConfigCard
-          icon="lock"
-          title="Autenticação Biométrica"
-          subtitle={
-            !isBiometricsAvailable
-              ? 'Biometria não disponível neste dispositivo'
-              : 'Use sua digital ou Face ID para acessar o app'
-          }
-          value={biometricsEnabled}
-          onValueChange={handleToggleBiometrics}
-          disabled={!isBiometricsAvailable}
-          isToggling={isTogglingBiometrics}
-          accentColor={colors.primaryGold}
-          loading={loading}
-        />
+        {/* Settings Cards & Options: 2 por linha em tablet landscape (notebook mode), 1 coluna em celular */}
+        {isNotebookMode ? (
+          <>
+            {/* Linha 1 de configurações: Biometria e Notificações */}
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <ConfigCard
+                  icon="lock"
+                  title="Autenticação Biométrica"
+                  subtitle={
+                    !isBiometricsAvailable
+                      ? 'Biometria não disponível neste dispositivo'
+                      : 'Use sua digital ou Face ID para acessar o app'
+                  }
+                  value={biometricsEnabled}
+                  onValueChange={handleToggleBiometrics}
+                  disabled={!isBiometricsAvailable}
+                  isToggling={isTogglingBiometrics}
+                  accentColor={colors.primaryGold}
+                  loading={loading}
+                />
+              </View>
+              <View className="flex-1">
+                <ConfigCard
+                  icon="bell"
+                  title="Lembretes de Vencimento"
+                  subtitle="Receba notificações sobre transações próximas do vencimento"
+                  value={notificationsEnabled}
+                  onValueChange={handleToggleNotifications}
+                  isToggling={isTogglingNotifications}
+                  accentColor={colors.incomeColor}
+                  loading={loading}
+                />
+              </View>
+            </View>
 
-        {/* Notifications */}
-        <ConfigCard
-          icon="bell"
-          title="Lembretes de Vencimento"
-          subtitle="Receba notificações sobre transações próximas do vencimento"
-          value={notificationsEnabled}
-          onValueChange={handleToggleNotifications}
-          isToggling={isTogglingNotifications}
-          accentColor={colors.incomeColor}
-          loading={loading}
-        />
+            {/* Linha 2: Comprovante de Pagamento e Primeiro item de Menu (Importar) */}
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <ConfigCard
+                  icon="file-text"
+                  title="Comprovante de Pagamento"
+                  subtitle="Perguntar se deseja adicionar comprovante ao marcar como pago"
+                  value={askForReceipt}
+                  onValueChange={handleToggleReceipt}
+                  isToggling={isTogglingReceipt}
+                  accentColor={colors.expenseColor}
+                  loading={loading}
+                />
+              </View>
+              <View className="flex-1">
+                <MenuItem {...menuItems[0]} />
+              </View>
+            </View>
 
-        {/* Receipt */}
-        <ConfigCard
-          icon="file-text"
-          title="Comprovante de Pagamento"
-          subtitle="Perguntar se deseja adicionar comprovante ao marcar como pago"
-          value={askForReceipt}
-          onValueChange={handleToggleReceipt}
-          isToggling={isTogglingReceipt}
-          accentColor={colors.expenseColor}
-          loading={loading}
-        />
+            {/* Linhas subsequentes do menu agrupadas de 2 em 2 */}
+            {Array.from({ length: Math.ceil((menuItems.length - 1) / 2) }).map((_, i) => {
+              const item1 = menuItems[1 + i * 2];
+              const item2 = menuItems[2 + i * 2];
+              return (
+                <View key={i} className="flex-row gap-3">
+                  <View className="flex-1">
+                    {item1 && <MenuItem {...item1} />}
+                  </View>
+                  <View className="flex-1">
+                    {item2 && <MenuItem {...item2} />}
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        ) : (
+          <>
+            {/* Security */}
+            <ConfigCard
+              icon="lock"
+              title="Autenticação Biométrica"
+              subtitle={
+                !isBiometricsAvailable
+                  ? 'Biometria não disponível neste dispositivo'
+                  : 'Use sua digital ou Face ID para acessar o app'
+              }
+              value={biometricsEnabled}
+              onValueChange={handleToggleBiometrics}
+              disabled={!isBiometricsAvailable}
+              isToggling={isTogglingBiometrics}
+              accentColor={colors.primaryGold}
+              loading={loading}
+            />
 
-        {/* Actions */}
-        {menuItems.map((item, index) => (
-          <MenuItem key={index} {...item} />
-        ))}
+            {/* Notifications */}
+            <ConfigCard
+              icon="bell"
+              title="Lembretes de Vencimento"
+              subtitle="Receba notificações sobre transações próximas do vencimento"
+              value={notificationsEnabled}
+              onValueChange={handleToggleNotifications}
+              isToggling={isTogglingNotifications}
+              accentColor={colors.incomeColor}
+              loading={loading}
+            />
+
+            {/* Receipt */}
+            <ConfigCard
+              icon="file-text"
+              title="Comprovante de Pagamento"
+              subtitle="Perguntar se deseja adicionar comprovante ao marcar como pago"
+              value={askForReceipt}
+              onValueChange={handleToggleReceipt}
+              isToggling={isTogglingReceipt}
+              accentColor={colors.expenseColor}
+              loading={loading}
+            />
+
+            {/* Actions */}
+            {menuItems.map((item, index) => (
+              <MenuItem key={index} {...item} />
+            ))}
+          </>
+        )}
       </ScrollView>
 
       {alertConfig && (

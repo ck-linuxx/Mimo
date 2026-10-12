@@ -314,33 +314,39 @@ export function TransactionItem({
         </TouchableOpacity>
       </Swipeable>
 
-      <EditScopeModal
-        visible={showScopeModal}
-        onClose={() => setShowScopeModal(false)}
-        onSelectScope={handleScopeSelect}
-        hasGroup={hasGroup}
-      />
+      {showScopeModal && (
+        <EditScopeModal
+          visible={showScopeModal}
+          onClose={() => setShowScopeModal(false)}
+          onSelectScope={handleScopeSelect}
+          hasGroup={hasGroup}
+        />
+      )}
 
-      <TransactionDetailsModal
-        visible={showDetailsModal}
-        transaction={transaction}
-        onClose={() => setShowDetailsModal(false)}
-        onEdit={() => {
-          setShowDetailsModal(false);
-          handleEditPress();
-        }}
-      />
+      {showDetailsModal && (
+        <TransactionDetailsModal
+          visible={showDetailsModal}
+          transaction={transaction}
+          onClose={() => setShowDetailsModal(false)}
+          onEdit={() => {
+            setShowDetailsModal(false);
+            handleEditPress();
+          }}
+        />
+      )}
 
-      <ReceiptModal
-        visible={showReceiptModal}
-        transactionId={transaction.id}
-        onClose={() => setShowReceiptModal(false)}
-        onSuccess={() => {
-          setShowReceiptModal(false);
-          onStatusChanged?.();
-        }}
-        onSkip={() => setShowReceiptModal(false)}
-      />
+      {showReceiptModal && (
+        <ReceiptModal
+          visible={showReceiptModal}
+          transactionId={transaction.id}
+          onClose={() => setShowReceiptModal(false)}
+          onSuccess={() => {
+            setShowReceiptModal(false);
+            onStatusChanged?.();
+          }}
+          onSkip={() => setShowReceiptModal(false)}
+        />
+      )}
     </>
   );
 }

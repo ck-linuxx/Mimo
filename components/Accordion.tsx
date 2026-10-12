@@ -8,9 +8,9 @@ import Animated, {
 import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
+import { SPRING_BOUNCE, SPRING_MODAL } from 'constants/animations';
 
-const SPRING_MODAL  = { damping: 55, stiffness: 700, overshootClamping: true } as const;
-const SPRING_BOUNCE = { damping: 5,  stiffness: 550, mass: 0.35 } as const;
+const SPRING_ACCORDION = { ...SPRING_MODAL, overshootClamping: true } as const;
 
 interface AccordionProps {
   title: string;
@@ -43,7 +43,7 @@ export function Accordion({
   const handleToggle = () => {
     const next = !open;
     setOpen(next);
-    progress.value = withSpring(next ? 1 : 0, SPRING_MODAL);
+    progress.value = withSpring(next ? 1 : 0, SPRING_ACCORDION);
     chevronRotation.value = withSpring(next ? 1 : 0, SPRING_BOUNCE);
   };
 

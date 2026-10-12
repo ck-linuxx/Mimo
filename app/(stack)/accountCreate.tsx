@@ -24,16 +24,14 @@ import { useTheme } from 'themes';
 import { useCustomAlert } from 'hooks/useCustomAlert';
 import { CustomAlert } from 'components/CustomAlert';
 import { ScreenWrapper } from 'components/ScreenWrapper';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { AppButton } from 'components/AppButton';
 import { ActionButton } from 'components/ActionButton';
 import { IconPickerGrid, ColorPickerCarousel } from 'components/IconPickerGrid';
 import { AccountTypeEnum } from 'types';
 import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
+import { SPRING_BOUNCE } from 'constants/animations';
 import type { Account } from 'types';
-
-
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
 
 const ACCOUNT_TYPE_OPTIONS = [
   AccountTypeEnum.Checking,
@@ -128,7 +126,7 @@ export default function AccountCreateScreen() {
     const item = db.select().from(accounts).where(eq(accounts.id, id)).get();
     if (item) {
       setName(item.name);
-      setSelectedType(item.type);
+      setSelectedType(item.type as AccountTypeEnum);
       setSelectedColor(item.color ?? PRESET_COLORS[9]);
       setSelectedIcon(item.icon ?? 'briefcase');
       setBalanceDisplay(
@@ -239,8 +237,10 @@ export default function AccountCreateScreen() {
     }
   }, [id, isEditing, name, selectedType, selectedColor, selectedIcon, initialBalance, router, showSuccess, showError]);
 
+  const { formMaxWidth } = useBreakpoint();
+
   return (
-    <ScreenWrapper style={{ backgroundColor: colors.background }}>
+    <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 640}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-6 pb-4 pt-2">
         <ActionButton icon="chevron-left" onPress={() => router.back()} />

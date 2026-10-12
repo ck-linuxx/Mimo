@@ -13,8 +13,7 @@ import { useUpcomingGoals } from 'hooks/useUpcomingGoals';
 import { formatCurrency } from 'utils/formatCurrency';
 import { calcMonthlyNeeded } from 'utils/goalCalculationsUtils';
 import type { FinancialGoal } from 'types/financialGoal';
-
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
+import { SPRING_BOUNCE } from 'constants/animations';
 
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 

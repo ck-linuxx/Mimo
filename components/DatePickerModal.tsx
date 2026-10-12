@@ -16,6 +16,7 @@ import Animated, {
 import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
+import { SPRING_BOUNCE, SPRING_MODAL } from 'constants/animations';
 
 interface DatePickerModalProps {
   visible: boolean;
@@ -34,8 +35,6 @@ const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const formatarData = (d: Date) =>
   d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-const SPRING_BOUNCE = { damping: 5, stiffness: 550, mass: 0.35 } as const;
-const SPRING_MODAL  = { damping: 55, stiffness: 700 } as const;
 interface DayButtonProps {
   day: number;
   isSelected: boolean;
