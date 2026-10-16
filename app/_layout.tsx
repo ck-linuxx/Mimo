@@ -23,12 +23,14 @@ import { Loading } from 'components/Loading';
 import { AppButton } from 'components/AppButton';
 import { ThemeProvider, darkColors, lightColors, useTheme } from 'themes';
 import { useSettings } from 'hooks/useSettings';
+import { useOnlineSync } from 'hooks/pluggy/useOnlineSync';
 import '../global.css';
 
 
 function AppNavigator() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
+  useOnlineSync(true);
   return (
     <Stack
       screenOptions={{

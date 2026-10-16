@@ -64,3 +64,13 @@ Metas com `status = cancelled` **não aparecem** em nenhuma das duas tabs.
 - Alertas sempre via `useCustomAlert` + `<CustomAlert />` — nunca `Alert` do RN
 - Cancelamento lógico (`status = cancelled`) — nunca `DELETE` físico em metas
 - Theming via classes NativeWind; `style={{}}` apenas para cores dinâmicas (cor da meta, ícones)
+
+---
+
+## Fluxo Pluggy (Open Finance)
+
+| Tela | Arquivo | Responsabilidade |
+|------|---------|------------------|
+| Configurações Pluggy | `pluggySettings.tsx` | Credenciais (`CLIENT_ID`, `CLIENT_SECRET`, `Item IDs` no `SecureStore`), janela de importação (`30`/`60`/`90` dias), toggle de sync automático, mapeamento de contas/cartões locais, sincronização manual e desconexão preservando staging |
+| Caixa de entrada (Banco) | `pluggyInbox.tsx` | Controle e curadoria das transações em staging (`pluggy_transactions`): importar direto, editar antes de importar, vincular a transação manual existente, ignorar, desfazer e ações em lote |
+

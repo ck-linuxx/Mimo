@@ -14,6 +14,7 @@ import { useCustomAlert } from 'hooks/useCustomAlert';
 import { useExportData } from 'hooks/useExportData';
 import { useAccountBalance } from 'hooks/useAccountBalance';
 import { useCardsPendingTotals } from 'hooks/transactions/useCardsPendingTotals';
+import { usePluggyPendingBadge } from 'hooks/pluggy/usePluggyInbox';
 import { ScreenWrapper, useTabBarPadding } from 'components/ScreenWrapper';
 import { useBreakpoint } from 'hooks/useBreakpoint';
 import { CustomAlert } from 'components/CustomAlert';
@@ -114,9 +115,18 @@ interface MenuItemProps {
   accentColor: string;
   onPress: () => void;
   loading?: boolean;
+  badgeCount?: number;
 }
 
-function MenuItem({ icon, title, subtitle, accentColor, onPress, loading = false }: MenuItemProps) {
+function MenuItem({
+  icon,
+  title,
+  subtitle,
+  accentColor,
+  onPress,
+  loading = false,
+  badgeCount = 0,
+}: MenuItemProps) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
 
@@ -153,6 +163,17 @@ function MenuItem({ icon, title, subtitle, accentColor, onPress, loading = false
             {subtitle}
           </Text>
         </View>
+        {badgeCount > 0 && (
+          <View
+            className="mr-2 rounded-full px-2.5 py-0.5"
+            style={{ backgroundColor: colors.primaryGold }}>
+            <Text
+              className="text-xs font-bold"
+              style={{ color: colors.primaryGoldContrast }}>
+              {badgeCount}
+            </Text>
+          </View>
+        )}
         {loading ? (
           <ActivityIndicator size="small" color={accentColor} />
         ) : (
@@ -409,6 +430,7 @@ export default function SettingsScreen() {
 
   const cardIds = cardsData.map((c) => c.id);
   const { data: cardsPending, refetch: refetchCardsPending } = useCardsPendingTotals(cardIds);
+  const { pendingCount: pluggyPendingCount, refetch: refetchPluggyBadge } = usePluggyPendingBadge();
 
   useFocusEffect(
     useCallback(() => {
@@ -416,7 +438,8 @@ export default function SettingsScreen() {
       refetchCards();
       refetchGoals();
       refetchCardsPending();
-    }, [refetchAccounts, refetchCards, refetchGoals, refetchCardsPending])
+      refetchPluggyBadge();
+    }, [refetchAccounts, refetchCards, refetchGoals, refetchCardsPending, refetchPluggyBadge])
   );
 
   const [isExporting, setIsExporting] = useState(false);
@@ -549,6 +572,22 @@ export default function SettingsScreen() {
   ];
 
   const menuItems = [
+    {
+      icon: 'refresh-cw' as const,
+      title: 'Integração Pluggy',
+      subtitle: 'Credenciais Open Finance e conexões bancárias',
+      accentColor: colors.primaryGold,
+      onPress: () => router.push('/pluggySettings'),
+      badgeCount: pluggyPendingCount,
+    },
+    {
+      icon: 'inbox' as const,
+      title: 'Caixa de entrada',
+      subtitle: 'Revisar, vincular ou editar transações do banco',
+      accentColor: colors.incomeColor,
+      onPress: () => router.push('/pluggyInbox'),
+      badgeCount: pluggyPendingCount,
+    },
     {
       icon: 'download' as const,
       title: 'Importar dados',

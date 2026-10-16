@@ -30,6 +30,8 @@ export default function StackGroupLayout() {
       <Stack.Screen name="accountSelect" />
       <Stack.Screen name="categoriesManage" />
       <Stack.Screen name="importData" />
+      <Stack.Screen name="pluggySettings" />
+      <Stack.Screen name="pluggyInbox" />
     </Stack>
   );
 }

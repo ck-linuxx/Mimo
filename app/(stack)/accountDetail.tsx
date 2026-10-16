@@ -5,7 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { db } from 'db/client';
 import { and, eq, inArray, lt } from 'drizzle-orm';
-import { accounts, transactions } from 'db/schema';
+import { accounts, bankAccounts, transactions, type BankAccount } from 'db/schema';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { ScreenWrapper } from 'components/ScreenWrapper';
@@ -44,13 +44,17 @@ export default function AccountDetailScreen() {
   // ─── Estado da conta (carregamento síncrono) ──────────────────────────────
 
   const [account, setAccount] = useState<Account | null>(null);
+  const [mappedBankAccount, setMappedBankAccount] = useState<BankAccount | null>(null);
   const [loadingAccount, setLoadingAccount] = useState(true);
 
   const loadAccount = useCallback(() => {
     if (!id) return;
     setLoadingAccount(true);
     const data = db.select().from(accounts).where(eq(accounts.id, id)).get() ?? null;
+    const bankAcc =
+      db.select().from(bankAccounts).where(eq(bankAccounts.localAccountId, id)).get() ?? null;
     setAccount(data);
+    setMappedBankAccount(bankAcc);
     setLoadingAccount(false);
   }, [id]);
 
@@ -324,6 +328,21 @@ export default function AccountDetailScreen() {
                   }}>
                   {formatCurrency(balance ?? 0)}
                 </Text>
+              )}
+              {mappedBankAccount != null && (
+                <View
+                  className="mt-3 flex-row items-center justify-between pt-3"
+                  style={{ borderTopWidth: 1, borderTopColor: colors.borderColor }}>
+                  <View className="flex-row items-center gap-1.5">
+                    <Feather name="refresh-cw" size={12} color={colors.primaryGold} />
+                    <Text className="text-xs" style={{ color: colors.textSecondary }}>
+                      Saldo no banco ({mappedBankAccount.name}):
+                    </Text>
+                  </View>
+                  <Text className="text-xs font-bold" style={{ color: colors.textPrimary }}>
+                    {formatCurrency(mappedBankAccount.balance ?? 0)}
+                  </Text>
+                </View>
               )}
             </View>
           </View>

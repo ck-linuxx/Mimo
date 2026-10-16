@@ -3,7 +3,7 @@ import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { settings } from 'db/schema';
-import type { Settings } from 'db/schema';
+import type { Settings, PluggyImportWindow } from 'db/schema';
 
 
 
@@ -11,10 +11,14 @@ interface UseSettingsResult {
   biometricsEnabled: boolean;
   notificationsEnabled: boolean;
   askForReceipt: boolean;
+  pluggyAutoSync: boolean;
+  pluggyImportWindowDays: number;
   isBiometricsAvailable: boolean;
   setBiometrics: (value: boolean) => Promise<void>;
   setNotifications: (value: boolean) => Promise<void>;
   setAskForReceipt: (value: boolean) => Promise<void>;
+  setPluggyAutoSync: (value: boolean) => Promise<void>;
+  setPluggyImportWindowDays: (value: PluggyImportWindow) => Promise<void>;
   loading: boolean;
 }
 
@@ -22,6 +26,8 @@ const DEFAULTS = {
   biometricsEnabled: false,
   notificationsEnabled: true,
   askForReceipt: true,
+  pluggyAutoSync: true,
+  pluggyImportWindowDays: 30,
 } as const;
 
 export function useSettings(): UseSettingsResult {
@@ -78,14 +84,28 @@ export function useSettings(): UseSettingsResult {
     [upsertField],
   );
 
+  const setPluggyAutoSync = useCallback(
+    async (value: boolean) => upsertField({ pluggyAutoSync: value }),
+    [upsertField],
+  );
+
+  const setPluggyImportWindowDays = useCallback(
+    async (value: PluggyImportWindow) => upsertField({ pluggyImportWindowDays: value }),
+    [upsertField],
+  );
+
   return {
     biometricsEnabled: row?.biometricsEnabled ?? DEFAULTS.biometricsEnabled,
     notificationsEnabled: row?.notificationsEnabled ?? DEFAULTS.notificationsEnabled,
     askForReceipt: row?.askForReceipt ?? DEFAULTS.askForReceipt,
+    pluggyAutoSync: row?.pluggyAutoSync ?? DEFAULTS.pluggyAutoSync,
+    pluggyImportWindowDays: row?.pluggyImportWindowDays ?? DEFAULTS.pluggyImportWindowDays,
     isBiometricsAvailable,
     setBiometrics,
     setNotifications,
     setAskForReceipt,
+    setPluggyAutoSync,
+    setPluggyImportWindowDays,
     loading,
   };
 }

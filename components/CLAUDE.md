@@ -725,3 +725,33 @@ interface CardBillingAccordionProps {
 
 **Dependências internas:** `Accordion`, `TransactionItem`, `formatCurrency`
 
+---
+
+### `TextInput.tsx`
+
+Componente `TextInput` reutilizável com tema automático (`colors.iconBackground`, `colors.textPrimary`, `colors.disabled`) e suporte nativo a `secureTextEntry` com botão de mostrar/ocultar (`eye` / `eye-off`) posicionado **dentro** do input à direita, com animação bounce via `react-native-reanimated`.
+
+**Importação:**
+```tsx
+import { TextInput } from 'components/TextInput';
+```
+
+**Props (`TextInputProps`):**
+- Herda todas as props do `TextInput` do `react-native`.
+- `secureTextEntry?: boolean` — quando `true`, gerencia automaticamente a visibilidade da senha/segredo e renderiza o ícone `eye` / `eye-off` dentro do campo.
+- `rightIcon?: FeatherIconName` e `onRightIconPress?: () => void` — ícone de ação customizado à direita dentro do input.
+- `containerStyle?: StyleProp<ViewStyle>` — estilo opcional para o container externo.
+
+---
+
+## Pasta `pluggy/`
+
+Componentes da Caixa de Entrada e Revisão da integração Pluggy (`app/(stack)/pluggyInbox.tsx`):
+
+- `InboxFilters.tsx`: abas de status (`Pendentes`, `Vinculadas`, `Importadas`, `Ignoradas`), chips de filtro por conta bancária/cartão da Pluggy e barra de busca textual.
+- `InboxItem.tsx`: card de transação em staging com badges (conta/cartão, `PENDING`, `Pagamento de fatura`, `Possível duplicata`, `Atualização do banco`), sugestão de vínculo em 1 toque e barra de ações (`Importar`, `Editar`, `Vincular`, `Ignorar`, `Desfazer`).
+- `ImportEditModal.tsx`: modal para editar descrição, valor, data, tipo, status, categoria e conta/cartão de destino antes de importar para `transactions`.
+- `MatchCandidatesModal.tsx`: modal para selecionar uma transação manual existente (candidatas automáticas por valor/data ou busca livre) e vincular ao registro da Pluggy sem duplicar.
+
+
+

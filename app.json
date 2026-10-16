@@ -24,7 +24,10 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-background-task",
+      "expo-notifications"
     ],
     "orientation": "default",
     "icon": "./assets/icon.png",

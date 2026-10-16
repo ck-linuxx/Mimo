@@ -20,3 +20,22 @@ export type { Settings } from './settings';
 
 export type { Attachment, NewAttachment, AttachmentLocal } from './attachment';
 export type { TransactionWithCategory } from './transactionView';
+
+export {
+  TransactionSourceEnum,
+  PluggyReviewStatusEnum,
+  PluggyBankAccountTypeEnum,
+} from './pluggy';
+export type {
+  BankConnection,
+  NewBankConnection,
+  BankAccount,
+  NewBankAccount,
+  PluggyTransaction,
+  NewPluggyTransaction,
+  TransactionSource,
+  PluggyReviewStatus,
+  PluggyBankAccountType,
+  PluggyImportWindowDays,
+} from './pluggy';
+

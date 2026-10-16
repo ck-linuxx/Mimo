@@ -224,6 +224,23 @@ export function TransactionItem({
                       </Text>
                     </View>
                   )}
+                {transaction.source === 'pluggy' && (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: colors.primaryGold + '22',
+                      paddingHorizontal: 6,
+                      paddingVertical: 1.5,
+                      borderRadius: 6,
+                    }}>
+                    <Feather name="refresh-cw" size={9} color={colors.primaryGold} />
+                    <Text style={{ color: colors.primaryGold, fontSize: 10, fontWeight: '700' }}>
+                      Banco
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <Text

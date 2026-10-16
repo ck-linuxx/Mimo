@@ -70,6 +70,41 @@ Ocorrências individuais de movimentações financeiras.
 - `goalId`: meta vinculada (nullable). Ao pagar, incrementa `financial_goals.currentAmount`.
 - `transactionGroupId`: referência ao grupo (nullable). Null = transação à vista.
 - `installmentNumber`: número da parcela dentro do grupo (ex: 3 de 12). Null para recorrentes.
+- `source`: `'manual' | 'pluggy'` (default `'manual'`). Indica a origem da transação.
+- `externalId`: ID único da transação na Pluggy (nullable, índice único `transactions_external_id_idx`).
+- `externalStatus`: `'POSTED' | 'PENDING'` (nullable), status reportado pelo banco.
+
+---
+
+### `bank_connections`
+Conexões bancárias (Items) sincronizadas da Pluggy.
+- `itemId`: UUID do Item na Pluggy (unique).
+- `connectorId`, `connectorName`, `connectorImageUrl`, `connectorPrimaryColor`: metadados da instituição.
+- `status` (`UPDATED`, `OUTDATED`, `LOGIN_ERROR`, `WAITING_USER_INPUT`, `UPDATING`) e `executionStatus`.
+- `lastSyncAt`, `lastUpdatedAt`, `errorMessage`.
+
+### `bank_accounts`
+Contas bancárias (`CHECKING` / `SAVINGS`) e cartões de crédito (`CREDIT`) retornados pela Pluggy.
+- `pluggyAccountId`: UUID da conta na Pluggy (unique).
+- `connectionId`: FK para `bank_connections.id` (ON DELETE CASCADE).
+- `type`: `'CHECKING' | 'SAVINGS' | 'CREDIT'`.
+- `localAccountId`: FK opcional para `accounts.id` (para `CHECKING`/`SAVINGS`).
+- `localCardId`: FK opcional para `cards.id` (para `CREDIT`).
+- `lastSyncedCursorAt`: timestamp ISO da última sincronização incremental da conta.
+
+### `pluggy_transactions`
+Tabela de **staging (Caixa de entrada)** para transações importadas da Pluggy antes de entrarem em `transactions`.
+- `pluggyTransactionId`: UUID da transação na Pluggy (unique).
+- `bankAccountId`: FK para `bank_accounts.id` (ON DELETE CASCADE).
+- `description`, `descriptionRaw`, `amount` (sempre positivo), `type` (`'income' | 'expense'`), `date`, `externalStatus` (`'POSTED' | 'PENDING'`).
+- `pluggyCategory`, `pluggyCategoryId`, `operationType`, `paymentMethod`, `installmentNumber`, `totalInstallments`, `cardNumber`, `rawJson`.
+- `reviewStatus`: `'pending' | 'imported' | 'linked' | 'ignored'`.
+- `linkedTransactionId`: FK opcional para `transactions.id` (ON DELETE SET NULL).
+- `hasDivergence`: boolean indicando se o banco alterou valor/data/status de uma transação já importada ou vinculada.
+
+### `settings` (colunas Pluggy)
+- `pluggyAutoSync`: boolean (default `true`) — ativa/desativa sincronização automática ao ficar online e em background.
+- `pluggyImportWindowDays`: integer (`30 | 60 | 90`, default `30`) — janela retroativa da primeira sincronização.
 
 ---
 
