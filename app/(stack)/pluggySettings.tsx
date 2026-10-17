@@ -101,7 +101,10 @@ export default function PluggySettingsScreen() {
   const [windowExpanded, setWindowExpanded] = useState(false);
   const [mappingTarget, setMappingTarget] = useState<BankAccount | null>(null);
 
-  const canSave = creds.clientId.trim().length > 0 && creds.clientSecret.trim().length > 0;
+  const canSave =
+    creds.clientId.trim().length > 0 &&
+    creds.clientSecret.trim().length > 0 &&
+    creds.itemIdsText.trim().length > 0;
 
   const reloadAll = useCallback(() => {
     refetch();
@@ -373,12 +376,12 @@ export default function PluggySettingsScreen() {
             />
 
             <Text className="mb-1 mt-4 text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">
-              ITEM IDs (opcional)
+              ITEM IDs
             </Text>
             <TextInput
               value={creds.itemIdsText}
               onChangeText={creds.setItemIdsText}
-              placeholder="Um por linha. Use se as conexões não forem listadas automaticamente"
+              placeholder="Um por linha (IDs das conexões criadas no Meu Pluggy)"
               autoCapitalize="none"
               autoCorrect={false}
               multiline

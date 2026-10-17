@@ -89,9 +89,9 @@ bun run db:check
 A integração com a Pluggy foi desenhada para uso pessoal no modelo *Client-Side Local-First*:
 
 1. Crie uma conta de desenvolvedor no [Pluggy Dashboard](https://dashboard.pluggy.ai) e obtenha seu `CLIENT_ID` e `CLIENT_SECRET`.
-2. Conecte suas instituições financeiras através do [Meu Pluggy](https://meu.pluggy.ai) (ou informe os `Item IDs` gerados).
+2. Conecte suas instituições financeiras através do [Meu Pluggy](https://meu.pluggy.ai) e copie os **`Item IDs`** de cada conexão bancária (obrigatórios).
 3. No aplicativo **Mimo**, acesse **Configurações → Integração Pluggy**:
-   - Insira o `PLUGGY_CLIENT_ID`, o `PLUGGY_CLIENT_SECRET` e, os `ITEM IDs` (um por linha).
+   - Insira o `PLUGGY_CLIENT_ID`, o `PLUGGY_CLIENT_SECRET` e os `ITEM IDs` (um por linha — campo obrigatório).
    - Toque em **Salvar e testar**. As credenciais são armazenadas exclusivamente no armazenamento seguro do dispositivo (`expo-secure-store` com `WHEN_UNLOCKED_THIS_DEVICE_ONLY`) e **nunca** entram em arquivos de backup exportados.
 4. Após a primeira sincronização, vincule cada conta/cartão retornado a uma conta ou cartão local do Mimo (ou crie um novo com 1 toque pelo modal de sugestão inteligente) e revise os lançamentos na **Caixa de Entrada**.
 
