@@ -18,6 +18,7 @@ interface LoadingProps {
   message?: string;
   size?: 'small' | 'medium' | 'large';
   showIcon?: boolean;
+  progress?: { current: number; total: number } | null;
 }
 
 const SIZE_MAP = {
@@ -30,6 +31,7 @@ export function Loading({
   message = 'Carregando...',
   size = 'medium',
   showIcon = true,
+  progress = null,
 }: LoadingProps) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
@@ -40,6 +42,20 @@ export function Loading({
   const dot0     = useSharedValue(0.3);
   const dot1     = useSharedValue(0.3);
   const dot2     = useSharedValue(0.3);
+  const progressAnim = useSharedValue(0);
+
+  const hasProgress = progress != null && progress.total > 0;
+  const targetRatio = hasProgress
+    ? Math.max(0, Math.min(1, progress.current / progress.total))
+    : 0;
+
+  useEffect(() => {
+    if (hasProgress) {
+      progressAnim.value = withTiming(targetRatio, { duration: 180 });
+    } else {
+      progressAnim.value = 0;
+    }
+  }, [hasProgress, targetRatio, progressAnim]);
 
   useEffect(() => {
     rotation.value = withRepeat(
@@ -89,6 +105,10 @@ export function Loading({
     transform: [{ scale: pulse.value }],
   }));
 
+  const progressFillStyle = useAnimatedStyle(() => ({
+    width: `${Math.round(progressAnim.value * 100)}%`,
+  }));
+
   const dotStyles = [
     useAnimatedStyle(() => ({ opacity: dot0.value })),
     useAnimatedStyle(() => ({ opacity: dot1.value })),
@@ -135,15 +155,37 @@ export function Loading({
         {message}
       </Text>
 
-      <View className="mt-4 flex-row gap-2">
-        {dotStyles.map((dotStyle, i) => (
-          <Animated.View
-            key={i}
-            className="h-1.5 w-1.5 rounded-full bg-light-primary-gold dark:bg-dark-primary-gold"
-            style={dotStyle}
-          />
-        ))}
-      </View>
+      {hasProgress ? (
+        <View className="mt-3 w-full">
+          <View
+            className="h-2.5 w-full overflow-hidden rounded-full"
+            style={{ backgroundColor: colors.iconBackground }}
+          >
+            <Animated.View
+              className="h-full rounded-full"
+              style={[{ backgroundColor: colors.primaryGold }, progressFillStyle]}
+            />
+          </View>
+          <View className="mt-1.5 flex-row items-center justify-between">
+            <Text className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">
+              {progress.current} de {progress.total}
+            </Text>
+            <Text className="text-xs font-bold" style={{ color: colors.primaryGold }}>
+              {Math.round(targetRatio * 100)}%
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <View className="mt-4 flex-row gap-2">
+          {dotStyles.map((dotStyle, i) => (
+            <Animated.View
+              key={i}
+              className="h-1.5 w-1.5 rounded-full bg-light-primary-gold dark:bg-dark-primary-gold"
+              style={dotStyle}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }

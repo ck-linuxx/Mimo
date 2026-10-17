@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { EntityIcon } from 'components/bank/BankLogo';
 import { Modal, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -112,14 +113,7 @@ export function AccountSelectModal({
                   <View
                     className="mr-3 h-10 w-10 items-center justify-center rounded-xl"
                     style={{ backgroundColor: accentColor + '20' }}>
-                    <Feather
-                      name={
-                        (account.icon as React.ComponentProps<typeof Feather>['name']) ??
-                        'briefcase'
-                      }
-                      size={18}
-                      color={accentColor}
-                    />
+                    <EntityIcon icon={account.icon} size={22} color={accentColor} />
                   </View>
                   <View className="flex-1">
                     <Text

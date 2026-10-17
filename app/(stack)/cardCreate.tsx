@@ -23,6 +23,9 @@ import { useBreakpoint } from 'hooks/useBreakpoint';
 import { AppButton } from 'components/AppButton';
 import { ActionButton } from 'components/ActionButton';
 import { ColorPickerCarousel } from 'components/IconPickerGrid';
+import { BankPicker } from 'components/bank/BankPicker';
+import { BANKS, type Bank } from 'components/bank/banks';
+import { EntityIcon, parseBankIcon, toBankIcon } from 'components/bank/BankLogo';
 import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
 import { AccountTypeEnum } from 'types';
 import type { Card, Account } from 'types';
@@ -45,6 +48,7 @@ export default function CardCreateScreen() {
   const [closingDay, setClosingDay] = useState('');
   const [dueDay, setDueDay] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>(PRESET_COLORS[0]); // vermelho
+  const [selectedIcon, setSelectedIcon] = useState<string>('credit-card');
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,6 +59,7 @@ export default function CardCreateScreen() {
       setName(item.name);
       setLastFourDigits(item.lastFourDigits ?? '');
       setSelectedColor(item.color ?? PRESET_COLORS[0]);
+      setSelectedIcon(item.icon ?? 'credit-card');
       if (item.creditLimit != null) {
         setLimitDisplay(
           item.creditLimit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -79,6 +84,16 @@ export default function CardCreateScreen() {
       params: { selectedId: selectedAccount?.id },
     });
   }, [router, selectedAccount?.id]);
+
+  const handleSelectBank = useCallback(
+    (bank: Bank) => {
+      const previous = BANKS.find((b) => b.code === parseBankIcon(selectedIcon));
+      setSelectedIcon(toBankIcon(bank.code));
+      // Pré-preenche o nome se estiver vazio ou ainda for o do banco anterior
+      if (!name.trim() || name.trim() === previous?.name) setName(bank.name.slice(0, 40));
+    },
+    [name, selectedIcon],
+  );
 
   const handleLimitChange = useCallback((text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -151,6 +166,7 @@ export default function CardCreateScreen() {
             closingDay: closingDayNum ?? null,
             dueDay: dueDayNum ?? null,
             color: selectedColor,
+            icon: selectedIcon,
             accountId: selectedAccount.id,
           })
           .where(eq(cards.id, id!))
@@ -169,6 +185,7 @@ export default function CardCreateScreen() {
           closingDay: closingDayNum ?? null,
           dueDay: dueDayNum ?? null,
           color: selectedColor,
+          icon: selectedIcon,
           accountId: selectedAccount.id,
           isActive: true,
           createdAt: now,
@@ -183,6 +200,7 @@ export default function CardCreateScreen() {
           dueDay: dueDayNum ?? null,
           accountId: selectedAccount.id,
           color: selectedColor,
+          icon: selectedIcon,
           isActive: true,
           createdAt: now,
         };
@@ -208,6 +226,7 @@ export default function CardCreateScreen() {
     closingDay,
     dueDay,
     selectedColor,
+    selectedIcon,
     selectedAccount,
     router,
     showSuccess,
@@ -237,7 +256,7 @@ export default function CardCreateScreen() {
           <View
             className="mb-3 h-24 w-24 items-center justify-center rounded-3xl"
             style={{ backgroundColor: selectedColor + '25' }}>
-            <Feather name="credit-card" size={40} color={selectedColor} />
+            <EntityIcon icon={selectedIcon} size={48} color={selectedColor} fallback="credit-card" />
           </View>
           <Text
             className="text-center text-lg font-semibold"
@@ -298,9 +317,9 @@ export default function CardCreateScreen() {
                 <View
                   className="w-9 h-9 rounded-xl items-center justify-center"
                   style={{ backgroundColor: (selectedAccount.color ?? colors.primaryGold) + '25' }}>
-                  <Feather
-                    name={(selectedAccount.icon as React.ComponentProps<typeof Feather>['name']) ?? 'briefcase'}
-                    size={18}
+                  <EntityIcon
+                    icon={selectedAccount.icon}
+                    size={22}
                     color={selectedAccount.color ?? colors.primaryGold}
                   />
                 </View>
@@ -452,13 +471,26 @@ export default function CardCreateScreen() {
         </View>
 
         {/* Cor */}
-        <View className="mb-8">
+        <View className="mb-6">
           <Text className="mb-3 text-base font-semibold" style={{ color: colors.textPrimary }}>
             Cor
           </Text>
           <ColorPickerCarousel
             selectedColor={selectedColor}
             onSelectColor={setSelectedColor}
+            colors={colors}
+          />
+        </View>
+
+        {/* Banco */}
+        <View className="mb-8">
+          <Text className="mb-3 text-base font-semibold" style={{ color: colors.textPrimary }}>
+            Banco
+          </Text>
+          <BankPicker
+            selectedCode={parseBankIcon(selectedIcon)}
+            onSelect={handleSelectBank}
+            accentColor={selectedColor}
             colors={colors}
           />
         </View>

@@ -23,6 +23,8 @@
 > );
 > ```
 
+> **Confirmação obrigatória em botões de ação:** Cada botão de ação sobre transações (ex.: Importar, Ocultar/Ignorar, Desfazer, Vincular, Aplicar atualização do banco e Ações em lote) **deve** possuir um modal de confirmação explícito usando `useCustomAlert.showConfirm()`, descrevendo a ação e apresentando os dados chave da transação (descrição, conta/cartão, data e valor) antes de persistir qualquer alteração.
+
 ## Convenção
 
 Toda pasta de funcionalidade **deve** conter um `CLAUDE.md` próprio descrevendo:
@@ -42,6 +44,10 @@ Toda pasta de funcionalidade **deve** conter um `CLAUDE.md` próprio descrevendo
 | `utils/` | [utils/CLAUDE.md](utils/CLAUDE.md) | Funções utilitárias puras (`formatCurrency`, `useCurrencyInput`, labels, frequências) |
 | `hooks/` | [hooks/CLAUDE.md](hooks/CLAUDE.md) | Hooks de query SQLite dedicados por entidade + `useCustomAlert` |
 | `components/` | [components/CLAUDE.md](components/CLAUDE.md) | Componentes React Native com regras de theming via `themes/colors.ts` |
+| `components/bank/` | [components/bank/CLAUDE.md](components/bank/CLAUDE.md) | Lista de bancos (BrasilAPI), logos embutidas e seletor usado em contas e cartões |
+| `components/pluggy/` | [components/pluggy/CLAUDE.md](components/pluggy/CLAUDE.md) | Modais e componentes da integração Pluggy (BankMappingModal, ImportEditModal, InboxFilters, InboxItem) |
 | `components/charts/` | [components/charts/CLAUDE.md](components/charts/CLAUDE.md) | Gráficos interativos via @wuba/react-native-echarts + react-native-svg (DonutChart) |
 | `components/reports/` | [components/reports/CLAUDE.md](components/reports/CLAUDE.md) | Cards compactos de relatório que agregam chart + seleção + listagem paginada |
-| `app/(stack)/` | [app/(stack)/CLAUDE.md](app/(stack)/CLAUDE.md) | Telas em stack — fluxo dedicado de metas (goalsManage/goalDetail/goalEdit) separado do fluxo de seleção (goalSelect) |
+| `services/pluggy/` | [services/pluggy/CLAUDE.md](services/pluggy/CLAUDE.md) | Integração Open Finance com a Pluggy (auth, cursor sync `/v2/transactions`, staging inbox, matching, notificações) |
+| `app/(stack)/` | [app/(stack)/CLAUDE.md](app/(stack)/CLAUDE.md) | Telas em stack — fluxo dedicado de metas (`goalsManage`/`goalDetail`/`goalEdit`) e integração Pluggy (`pluggySettings`/`pluggyInbox`) |
+

@@ -1,3 +1,4 @@
+import { EntityIcon } from 'components/bank/BankLogo';
 import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -70,7 +71,7 @@ function CardItem({ item, onDeactivate, colors }: CardItemProps) {
             <View
               className="w-12 h-12 rounded-xl items-center justify-center"
               style={{ backgroundColor: accentColor + '20' }}>
-              <Feather name="credit-card" size={22} color={accentColor} />
+              <EntityIcon icon={item.icon} size={26} color={accentColor} fallback="credit-card" />
             </View>
 
             <View className="flex-1">

@@ -5,6 +5,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Feather } from '@expo/vector-icons';
+import {
+  useFonts,
+  Inter_300Light,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 
 import migrations from 'drizzle/migrations';
 import { db, expo } from 'db/client';
@@ -13,13 +22,17 @@ import { seedDefaultCategories } from 'utils/seedCategories';
 import { Loading } from 'components/Loading';
 import { AppButton } from 'components/AppButton';
 import { ThemeProvider, darkColors, lightColors, useTheme } from 'themes';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from 'services/queryClient';
 import { useSettings } from 'hooks/useSettings';
+import { useOnlineSync } from 'hooks/pluggy/useOnlineSync';
 import '../global.css';
 
 
 function AppNavigator() {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
+  useOnlineSync(true);
   return (
     <Stack
       screenOptions={{
@@ -130,6 +143,16 @@ function BiometricGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter: Inter_400Regular,
+    Inter_300Light,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
   const [migrationState, setMigrationState] = useState<{ success: boolean; error?: Error }>({
     success: false,
   });
@@ -196,7 +219,7 @@ export default function RootLayout() {
     );
   }
 
-  if (!dbReady) {
+  if (!dbReady || (!fontsLoaded && !fontError)) {
     return (
       <View
         style={{
@@ -212,13 +235,15 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <BiometricGate>
-            <AppNavigator />
-          </BiometricGate>
-        </ThemeProvider>
-      </SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <BiometricGate>
+              <AppNavigator />
+            </BiometricGate>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }

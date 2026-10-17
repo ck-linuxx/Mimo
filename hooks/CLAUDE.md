@@ -329,3 +329,17 @@ Busca todos os anexos (`isReceipt=false`) de todas as transações de um grupo v
 - Se `transactionGroupId` for null/undefined → retorna `data: []` sem query
 - Comprovantes (`isReceipt=true`) permanecem individuais — usar `useAttachments()` para isso
 - Usado em `TransactionDetailsModal` na seção "Anexos" quando a transação tem grupo
+
+---
+
+## Pasta `pluggy/`
+
+Hooks da integração Open Finance com a Pluggy:
+
+- `usePluggyCredentials.ts`: lê, salva, testa (`authenticate(true)`) e remove credenciais (`clientId`, `clientSecret`, `itemIds`) do `expo-secure-store`.
+- `usePluggyConnections.ts`: lista `bank_connections` e `bank_accounts`, atualiza conexões na API (`refreshFromRemote`), gerencia vínculo com conta/cartão local (`mapAccount`, `createAndMapLocalTarget`) e limpa dados da integração (`purgeAllData`).
+- `usePluggySync.ts`: subscreve ao estado global de sincronização (`syncService`) e expõe `syncNow({ force })`.
+- `useOnlineSync.ts`: monitora conectividade (`@react-native-community/netinfo`) e retorno ao foreground (`AppState`), disparando `syncAllPluggyData` respeitando `pluggyAutoSync` e throttle de 15 min, além de registrar `PLUGGY_BACKGROUND_SYNC_TASK`.
+- `usePluggyInbox.ts`: paginação DB-level (`limit/offset` + `COUNT(*)` separado) de `pluggy_transactions` por aba (`pending`, `linked`, `imported`, `ignored`), filtro de conta, busca textual, candidatos de vínculo e sugestão de categoria. Exporta também `usePluggyPendingBadge()`.
+- `usePluggyReview.ts`: ações de revisão da caixa de entrada (`approveAsNew`, `approveWithEdits`, `linkExisting`, `ignore`, `undo`, `applyBankUpdate`, `bulkIgnore`, `bulkImport`, `bulkImportSafe`, `searchManualCandidates`).
+

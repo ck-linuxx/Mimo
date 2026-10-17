@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { eq } from 'drizzle-orm';
+import { db } from 'db/client';
+import { pluggyTransactions } from 'db/schema';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { TransactionStatusEnum, TransactionTypeEnum, GroupTypeEnum } from 'types';
@@ -93,6 +96,29 @@ export function TransactionDetailsModal({
   const colors = theme === 'dark' ? darkColors : lightColors;
   const { isTablet } = useBreakpoint();
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
+  const [showBankDiff, setShowBankDiff] = useState(false);
+
+  const pluggyStaging = useMemo(() => {
+    if (!visible || !transaction.externalId) return null;
+    try {
+      return (
+        db
+          .select()
+          .from(pluggyTransactions)
+          .where(eq(pluggyTransactions.externalId, transaction.externalId))
+          .get() ?? null
+      );
+    } catch {
+      return null;
+    }
+  }, [visible, transaction.externalId]);
+
+  const hasBankDivergence = useMemo(() => {
+    if (!pluggyStaging) return false;
+    const amountDiff = Math.abs(pluggyStaging.amount - transaction.amount) > 0.009;
+    const dateDiff = Math.abs(pluggyStaging.date - transaction.date) >= 24 * 60 * 60 * 1000;
+    return amountDiff || dateDiff || pluggyStaging.bankChangedAt != null;
+  }, [pluggyStaging, transaction.amount, transaction.date]);
 
   const { data: allAttachments, loading: loadingAttachments } = useAttachments(
     visible ? transaction.id : undefined,
@@ -305,6 +331,87 @@ export function TransactionDetailsModal({
                   <InfoRow icon="calendar" label="Data" value={formatFullDate(transaction.date)} />
                   <View style={{ height: 1, backgroundColor: colors.iconBackground }} />
                   <InfoRow icon={paymentIcon} label="Tipo de pagamento" value={paymentLabel} />
+
+                  {transaction.source === 'pluggy' && (
+                    <>
+                      <View style={{ height: 1, backgroundColor: colors.iconBackground }} />
+                      <InfoRow
+                        icon="refresh-cw"
+                        label="Origem"
+                        value={
+                          transaction.externalStatus === 'PENDING'
+                            ? 'Banco (Open Finance · Pendente no banco)'
+                            : 'Banco (Open Finance · Paga)'
+                        }
+                        iconColor={colors.primaryGold}
+                        iconBg={colors.primaryGold + '20'}
+                      />
+                    </>
+                  )}
+
+                  {pluggyStaging && hasBankDivergence && (
+                    <View style={{ marginTop: 8 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => setShowBankDiff((v) => !v)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          backgroundColor: colors.primaryGold + '18',
+                          borderWidth: 1,
+                          borderColor: colors.primaryGold,
+                          borderRadius: 12,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                        }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Feather name="alert-circle" size={16} color={colors.primaryGold} />
+                          <Text style={{ color: colors.primaryGold, fontSize: 13, fontWeight: '700' }}>
+                            Difere do banco
+                          </Text>
+                        </View>
+                        <Feather
+                          name={showBankDiff ? 'chevron-up' : 'chevron-down'}
+                          size={16}
+                          color={colors.primaryGold}
+                        />
+                      </TouchableOpacity>
+
+                      {showBankDiff && (
+                        <View
+                          style={{
+                            marginTop: 8,
+                            backgroundColor: colors.iconBackground,
+                            borderRadius: 12,
+                            padding: 12,
+                            gap: 6,
+                          }}>
+                          <Text
+                            style={{
+                              color: colors.textSecondary,
+                              fontSize: 11,
+                              fontWeight: '700',
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.6,
+                            }}>
+                            Dados originais do banco (Pluggy)
+                          </Text>
+                          <Text style={{ color: colors.textPrimary, fontSize: 13 }}>
+                            Descrição: <Text style={{ fontWeight: '600' }}>{pluggyStaging.description}</Text>
+                          </Text>
+                          <Text style={{ color: colors.textPrimary, fontSize: 13 }}>
+                            Valor no banco:{' '}
+                            <Text style={{ fontWeight: '600' }}>{formatCurrency(pluggyStaging.amount)}</Text>
+                          </Text>
+                          <Text style={{ color: colors.textPrimary, fontSize: 13 }}>
+                            Data no banco:{' '}
+                            <Text style={{ fontWeight: '600' }}>{formatFullDate(pluggyStaging.date)}</Text>
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
 
                   {isInstallment && transaction.group && (
                     <>

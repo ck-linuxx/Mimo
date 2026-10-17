@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { EntityIcon } from 'components/bank/BankLogo';
 import { View, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -54,11 +55,7 @@ export default function AccountSelectScreen() {
           <View
             className="w-11 h-11 rounded-xl items-center justify-center"
             style={{ backgroundColor: (item.color ?? colors.primaryGold) + '25' }}>
-            <Feather
-              name={(item.icon as React.ComponentProps<typeof Feather>['name']) ?? 'briefcase'}
-              size={20}
-              color={item.color ?? colors.primaryGold}
-            />
+            <EntityIcon icon={item.icon} size={24} color={item.color ?? colors.primaryGold} />
           </View>
           <View className="flex-1">
             <Text className="text-base font-medium" style={{ color: colors.textPrimary }}>

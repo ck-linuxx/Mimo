@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { ScreenWrapper, useTabBarPadding } from 'components/ScreenWrapper';
 import { ActionButton } from 'components/ActionButton';
 import { Loading } from 'components/Loading';
@@ -10,6 +10,8 @@ import { TransactionItem } from 'components/TransactionItem';
 import { CardBillingAccordion } from 'components/CardBillingAccordion';
 import { useTransactions } from 'hooks/useTransactions';
 import { useSettings } from 'hooks/useSettings';
+import { usePluggyPendingBadge } from 'hooks/pluggy/usePluggyInbox';
+import { usePluggySync } from 'hooks/pluggy/usePluggySync';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
 import { TransactionStatusEnum, TransactionTypeEnum } from 'types';
@@ -60,9 +62,12 @@ function groupByDay(items: TransactionWithCategory[]): DayGroup[] {
 }
 
 export default function TransactionsScreen() {
+  const router = useRouter();
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
   const { askForReceipt } = useSettings();
+  const { pendingCount, refetch: refreshBadge } = usePluggyPendingBadge();
+  const { syncing: isSyncing, syncNow } = usePluggySync();
 
   const today = new Date();
   const [year, setYear]   = useState(today.getFullYear());
@@ -71,8 +76,17 @@ export default function TransactionsScreen() {
   const { data, cardBillingData, loading, refetch } = useTransactions(year, month);
 
   useFocusEffect(
-    useCallback(() => { refetch(); }, [refetch]),
+    useCallback(() => {
+      refetch();
+      refreshBadge();
+    }, [refetch, refreshBadge]),
   );
+
+  const handlePullRefresh = useCallback(async () => {
+    await syncNow({ force: true });
+    refetch();
+    refreshBadge();
+  }, [syncNow, refetch, refreshBadge]);
 
   const navegarMes = (direcao: 'anterior' | 'proximo') => {
     if (direcao === 'anterior') {
@@ -174,13 +188,54 @@ export default function TransactionsScreen() {
           maxToRenderPerBatch={10}
           windowSize={5}
           removeClippedSubviews={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={isSyncing}
+              onRefresh={handlePullRefresh}
+              tintColor={colors.primaryGold}
+              colors={[colors.primaryGold]}
+            />
+          }
           contentContainerStyle={{
             padding: isNotebookMode ? 24 : 16,
             paddingBottom: tabBarPadding,
           }}
           ListHeaderComponent={
-            hasData ? (
+            hasData || pendingCount > 0 ? (
               <View style={{ gap: 12, marginBottom: 16 }}>
+                {pendingCount > 0 && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => router.push('/pluggyInbox')}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: colors.primaryGold + '18',
+                      borderWidth: 1,
+                      borderColor: colors.primaryGold,
+                      borderRadius: 14,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                    }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <Feather name="inbox" size={18} color={colors.primaryGold} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 13 }}>
+                          {pendingCount === 1
+                            ? '1 transação do banco pendente'
+                            : `${pendingCount} transações do banco pendentes`}
+                        </Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 1 }}>
+                          Toque para revisar e importar na Caixa de entrada
+                        </Text>
+                      </View>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.primaryGold} />
+                  </TouchableOpacity>
+                )}
+                {hasData && (
+                  <>
                 {/* Card unico de resumo mensal */}
                 <View style={{ backgroundColor: colors.cardBackground, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: colors.borderColor }}>
 
@@ -240,6 +295,8 @@ export default function TransactionsScreen() {
                     askForReceipt={askForReceipt}
                   />
                 ))}
+                  </>
+                )}
               </View>
             ) : null
           }

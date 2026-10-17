@@ -112,3 +112,38 @@ const { displayValue, numericValue, onChange } = useCurrencyInput(initialValue);
 - Strip de não-dígitos → divide por 100 → formata com `toLocaleString('pt-BR')`.
 - Campo vazio retorna `numericValue = 0` e `displayValue = ''`.
 - Nunca requer `Math.round()` — o valor já é decimal correto para o DB.
+
+---
+
+## Regras de Organização e Nomenclatura
+
+- **Itens de auxílio:** Devem seguir o padrão de nomenclatura `[funcao][servico/uso]`.
+- **Subpastas por serviço:** Se possuir mais de um item de auxílio/utilitário para o mesmo serviço, deve ser criada uma pasta com o nome do serviço de origem (exemplo: `utils/pluggy/`).
+
+---
+
+## Subpastas por Serviço
+
+### `utils/pluggy/`
+
+#### `matchBankPluggy.ts`
+Função que realiza correspondência inteligente entre o conector ou conta recebidos da Pluggy e a lista de bancos do sistema (`components/bank/banks.ts`):
+- Utiliza regex ponderado para encontrar o banco com maior similaridade/match.
+- Identifica aliases comuns (Nubank, Inter, Itaú, Bradesco, Santander, C6, etc.).
+- Sugere ícone (`toBankIcon(code)`), nome limpo e cor padrão do banco.
+- Retorna `{ bank, suggestedName, suggestedIcon, suggestedColor, score }`.
+
+#### `mappersPluggy.ts`
+Funções utilitárias puras para conversão e mapeamento de dados da Pluggy:
+- `mapDtoToStagingValues`: converte transações da API Pluggy para inserção na staging (`pluggy_transactions`).
+- `isInvoicePayment`: verifica se a transação representa pagamento de fatura de cartão.
+- `suggestCategoryId`: heurística de correspondência de categorias via palavras-chave.
+- `computeBillingPeriod`: calcula o período de fatura no formato YYYY-MM.
+- `mapStagingToNewTransaction`: converte item da staging para inserção final na tabela de transações do mimo.
+
+#### `matchingPluggy.ts`
+Algoritmo de vinculação e correspondência entre transações da staging e transações existentes no app:
+- `findMatchCandidates`: busca transações existentes compatíveis em valor, tipo e janela de datas (suporta `MatchContext` em memória).
+- `descriptionSimilarity`: similaridade baseada em tokens normalizados.
+- `searchManualLinkTargets`: busca manual de transações candidatas para vínculo.
+

@@ -50,7 +50,11 @@ export function DatePicker({ data, onChangeData, label = 'Data' }: DatePickerPro
 
       <TouchableOpacity
         className="rounded-2xl p-4 flex-row items-center justify-between"
-        style={{ backgroundColor: colors.cardBackground }}
+        style={{
+          backgroundColor: colors.cardBackground,
+          borderWidth: 1,
+          borderColor: colors.borderColor,
+        }}
         activeOpacity={0.7}
         onPress={openModal}
       >

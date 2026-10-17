@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
-import { ScrollView, View, Text } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { RefreshControl, ScrollView, TouchableOpacity, View, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors } from 'themes/colors';
 import { useTheme } from 'themes';
@@ -14,6 +14,8 @@ import { useTotalBalance } from 'hooks/useTotalBalance';
 import { useTransactions } from 'hooks/useTransactions';
 import { usePendingTransactions } from 'hooks/transactions/usePendingTransactions';
 import { useSettings } from 'hooks/useSettings';
+import { usePluggyPendingBadge } from 'hooks/pluggy/usePluggyInbox';
+import { usePluggySync } from 'hooks/pluggy/usePluggySync';
 import { TransactionTypeEnum, TransactionStatusEnum } from 'types';
 import { formatCurrency } from 'utils/formatCurrency';
 import { Skeleton } from 'components/Skeleton';
@@ -25,11 +27,14 @@ import { ResponsiveContainer } from 'components/ResponsiveContainer';
 // ─── Tela ─────────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
   const { askForReceipt } = useSettings();
   const { isTablet, isNotebookMode } = useBreakpoint();
   const tabBarPadding = useTabBarPadding();
+  const { pendingCount: pluggyPendingCount, refetch: refetchPluggyBadge } = usePluggyPendingBadge();
+  const { syncing: isPluggySyncing, syncNow } = usePluggySync();
 
   // ─── Estado de paginação das transações pendentes ─────────────────────────
   const [pendingPage, setPendingPage] = useState(0);
@@ -57,8 +62,17 @@ export default function HomeScreen() {
       refetchBalance();
       refetchMonthly();
       refetchPending();
-    }, [refetchBalance, refetchMonthly, refetchPending]),
+      refetchPluggyBadge();
+    }, [refetchBalance, refetchMonthly, refetchPending, refetchPluggyBadge]),
   );
+
+  const handlePullRefresh = useCallback(async () => {
+    await syncNow({ force: true });
+    refetchBalance();
+    refetchMonthly();
+    refetchPending();
+    refetchPluggyBadge();
+  }, [syncNow, refetchBalance, refetchMonthly, refetchPending, refetchPluggyBadge]);
 
   // ─── Cálculos mensais ─────────────────────────────────────────────────────
   const { totalReceitas, totalDespesas } = useMemo(() => {
@@ -258,8 +272,58 @@ export default function HomeScreen() {
           paddingTop: 16,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isPluggySyncing}
+            onRefresh={handlePullRefresh}
+            tintColor={colors.primaryGold}
+            colors={[colors.primaryGold]}
+          />
+        }
       >
         <ResponsiveContainer type="content">
+          {pluggyPendingCount > 0 && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push('/pluggyInbox')}
+              className="mb-4 flex-row items-center justify-between rounded-2xl px-4 py-3"
+              style={{
+                backgroundColor: colors.primaryGold + '18',
+                borderWidth: 1,
+                borderColor: colors.primaryGold,
+              }}>
+              <View className="flex-1 flex-row items-center gap-3">
+                <View
+                  className="h-9 w-9 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: colors.primaryGold + '28' }}>
+                  <Feather name="inbox" size={18} color={colors.primaryGold} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary">
+                    {pluggyPendingCount === 1
+                      ? '1 transação do banco pendente'
+                      : `${pluggyPendingCount} transações do banco pendentes`}
+                  </Text>
+                  <Text className="text-xs text-light-text-secondary dark:text-dark-text-secondary">
+                    Toque para revisar na Caixa de entrada
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-row items-center gap-2">
+                <View
+                  className="rounded-full px-2.5 py-0.5"
+                  style={{ backgroundColor: colors.primaryGold }}>
+                  <Text
+                    className="text-xs font-bold"
+                    style={{ color: colors.primaryGoldContrast }}>
+                    {pluggyPendingCount}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.primaryGold} />
+              </View>
+            </TouchableOpacity>
+          )}
+
           {/* ── Resumo de Saldo, Receitas e Despesas ─────────────────────────── */}
           {isTablet ? (
             <View className="flex-row gap-3 mb-4">

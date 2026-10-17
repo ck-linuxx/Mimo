@@ -27,7 +27,10 @@ import { ScreenWrapper } from 'components/ScreenWrapper';
 import { useBreakpoint } from 'hooks/useBreakpoint';
 import { AppButton } from 'components/AppButton';
 import { ActionButton } from 'components/ActionButton';
-import { IconPickerGrid, ColorPickerCarousel } from 'components/IconPickerGrid';
+import { ColorPickerCarousel } from 'components/IconPickerGrid';
+import { BankPicker } from 'components/bank/BankPicker';
+import { BANKS, type Bank } from 'components/bank/banks';
+import { EntityIcon, parseBankIcon, toBankIcon } from 'components/bank/BankLogo';
 import { AccountTypeEnum } from 'types';
 import { ACCOUNT_TYPE_LABELS } from 'utils/transactionLabels';
 import { SPRING_BOUNCE } from 'constants/animations';
@@ -139,6 +142,16 @@ export default function AccountCreateScreen() {
   const handleTypeChange = useCallback((type: AccountTypeEnum) => {
     setSelectedType(type);
   }, []);
+
+  const handleSelectBank = useCallback(
+    (bank: Bank) => {
+      const previous = BANKS.find((b) => b.code === parseBankIcon(selectedIcon));
+      setSelectedIcon(toBankIcon(bank.code));
+      // Pré-preenche o nome se estiver vazio ou ainda for o do banco anterior
+      if (!name.trim() || name.trim() === previous?.name) setName(bank.name.slice(0, 40));
+    },
+    [name, selectedIcon],
+  );
 
   const handleBalanceChange = useCallback((text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -260,11 +273,7 @@ export default function AccountCreateScreen() {
           <View
             className="mb-3 h-24 w-24 items-center justify-center rounded-3xl"
             style={{ backgroundColor: selectedColor + '25' }}>
-            <Feather
-              name={selectedIcon as React.ComponentProps<typeof Feather>['name']}
-              size={40}
-              color={selectedColor}
-            />
+            <EntityIcon icon={selectedIcon} size={48} color={selectedColor} />
           </View>
           <Text
             className="text-center text-lg font-semibold"
@@ -362,15 +371,15 @@ export default function AccountCreateScreen() {
           />
         </View>
 
-        {/* Ícone */}
+        {/* Banco */}
         <View className="mb-8">
           <Text className="mb-3 text-base font-semibold" style={{ color: colors.textPrimary }}>
-            Ícone
+            Banco
           </Text>
-          <IconPickerGrid
-            selectedIcon={selectedIcon}
-            onSelectIcon={setSelectedIcon}
-            selectedColor={selectedColor}
+          <BankPicker
+            selectedCode={parseBankIcon(selectedIcon)}
+            onSelect={handleSelectBank}
+            accentColor={selectedColor}
             colors={colors}
           />
         </View>
