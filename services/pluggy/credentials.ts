@@ -4,6 +4,10 @@ const KEY_CLIENT_ID = 'pluggy.clientId';
 const KEY_CLIENT_SECRET = 'pluggy.clientSecret';
 const KEY_ITEM_IDS = 'pluggy.itemIds';
 
+const SECURE_OPTS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+};
+
 export interface PluggyCredentials {
   clientId: string;
   clientSecret: string;
@@ -27,8 +31,8 @@ export async function hasCredentials(): Promise<boolean> {
 
 export async function saveCredentials(credentials: PluggyCredentials): Promise<void> {
   await Promise.all([
-    SecureStore.setItemAsync(KEY_CLIENT_ID, credentials.clientId.trim()),
-    SecureStore.setItemAsync(KEY_CLIENT_SECRET, credentials.clientSecret.trim()),
+    SecureStore.setItemAsync(KEY_CLIENT_ID, credentials.clientId.trim(), SECURE_OPTS),
+    SecureStore.setItemAsync(KEY_CLIENT_SECRET, credentials.clientSecret.trim(), SECURE_OPTS),
   ]);
 }
 
@@ -61,7 +65,7 @@ export async function saveManualItemIds(itemIds: string[]): Promise<void> {
     await SecureStore.deleteItemAsync(KEY_ITEM_IDS);
     return;
   }
-  await SecureStore.setItemAsync(KEY_ITEM_IDS, JSON.stringify(clean));
+  await SecureStore.setItemAsync(KEY_ITEM_IDS, JSON.stringify(clean), SECURE_OPTS);
 }
 
 export async function clearManualItemIds(): Promise<void> {

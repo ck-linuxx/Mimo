@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { db, expo } from 'db/client';
 import {
   bankAccounts,
@@ -6,6 +6,9 @@ import {
   categories,
   pluggyTransactions,
   transactions,
+  type BankAccount,
+  type Card,
+  type Category,
   type PluggyTransaction,
 } from 'db/schema';
 import { generateId } from 'utils/generateId';
@@ -13,8 +16,55 @@ import {
   isInvoicePayment,
   mapStagingToNewTransaction,
   type StagingImportOverrides,
-} from './mappers';
-import { findMatchCandidates } from './matching';
+} from 'utils/pluggy/mappersPluggy';
+import { findMatchCandidates, type MatchContext } from 'utils/pluggy/matchingPluggy';
+
+const BATCH_SIZE = 10;
+
+export type BulkProgressCallback = (current: number, total: number) => void;
+
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function importSingleInTransaction(
+  staging: PluggyTransaction,
+  bankAccountsMap: Map<string, BankAccount>,
+  cardsMap: Map<string, Card>,
+  allCats: Category[],
+  existingExtMap: Map<string, string>,
+  now: number,
+  overrides: StagingImportOverrides = {}
+): string {
+  const bankAccount = bankAccountsMap.get(staging.bankAccountId) ?? null;
+  const targetCardId =
+    overrides.cardId !== undefined ? overrides.cardId : (bankAccount?.localCardId ?? null);
+  const card = targetCardId ? (cardsMap.get(targetCardId) ?? null) : null;
+
+  const newTx = mapStagingToNewTransaction(staging, bankAccount, card, overrides, allCats);
+  const existingTxId = existingExtMap.get(staging.externalId);
+  const finalTxId = existingTxId ?? generateId();
+
+  if (!existingTxId) {
+    db.insert(transactions)
+      .values({ ...newTx, id: finalTxId })
+      .run();
+    existingExtMap.set(staging.externalId, finalTxId);
+  }
+
+  db.update(pluggyTransactions)
+    .set({
+      reviewStatus: 'imported',
+      importedTransactionId: finalTxId,
+      bankChangedAt: null,
+      reviewedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(pluggyTransactions.id, staging.id))
+    .run();
+
+  return finalTxId;
+}
 
 /**
  * Importa um item do staging (`pluggy_transactions`), criando uma nova transação em `transactions`.
@@ -43,39 +93,35 @@ export function importStagingTransaction(
     : null;
 
   const allCats = db.select().from(categories).all();
-  const newTx = mapStagingToNewTransaction(staging, bankAccount, card, overrides, allCats);
-  const txId = generateId();
+  const bankAccountsMap = new Map<string, BankAccount>();
+  if (bankAccount) bankAccountsMap.set(bankAccount.id, bankAccount);
+  const cardsMap = new Map<string, Card>();
+  if (card) cardsMap.set(card.id, card);
+
+  const existingByExt = db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(eq(transactions.externalId, staging.externalId))
+    .get();
+
+  const existingExtMap = new Map<string, string>();
+  if (existingByExt) existingExtMap.set(staging.externalId, existingByExt.id);
+
+  let finalId = '';
   const now = Date.now();
-
   expo.withTransactionSync(() => {
-    // Se já havia uma transação vinculada/importada para este externalId, evita colisão unique
-    const existingByExt = db
-      .select({ id: transactions.id })
-      .from(transactions)
-      .where(eq(transactions.externalId, staging.externalId))
-      .get();
-
-    const finalTxId = existingByExt?.id ?? txId;
-
-    if (!existingByExt) {
-      db.insert(transactions)
-        .values({ ...newTx, id: finalTxId })
-        .run();
-    }
-
-    db.update(pluggyTransactions)
-      .set({
-        reviewStatus: 'imported',
-        importedTransactionId: finalTxId,
-        bankChangedAt: null,
-        reviewedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(pluggyTransactions.id, staging.id))
-      .run();
+    finalId = importSingleInTransaction(
+      staging,
+      bankAccountsMap,
+      cardsMap,
+      allCats,
+      existingExtMap,
+      now,
+      overrides
+    );
   });
 
-  return txId;
+  return finalId;
 }
 
 /**
@@ -223,46 +269,140 @@ export function applyBankUpdateToTransaction(stagingId: string): void {
   });
 }
 
-/** Ignora em lote os IDs informados. */
-export function bulkIgnoreStaging(stagingIds: string[]): number {
-  if (stagingIds.length === 0) return 0;
+/** Ignora em lote (batches de 10 itens) os IDs informados. */
+export async function bulkIgnoreStaging(
+  stagingIds: string[],
+  onProgress?: BulkProgressCallback
+): Promise<number> {
+  const total = stagingIds.length;
+  if (total === 0) return 0;
+
+  onProgress?.(0, total);
   const now = Date.now();
-  db.update(pluggyTransactions)
-    .set({
-      reviewStatus: 'ignored',
-      bankChangedAt: null,
-      reviewedAt: now,
-      updatedAt: now,
-    })
-    .where(inArray(pluggyTransactions.id, stagingIds))
-    .run();
-  return stagingIds.length;
+
+  for (let i = 0; i < total; i += BATCH_SIZE) {
+    const chunk = stagingIds.slice(i, i + BATCH_SIZE);
+    expo.withTransactionSync(() => {
+      db.update(pluggyTransactions)
+        .set({
+          reviewStatus: 'ignored',
+          bankChangedAt: null,
+          reviewedAt: now,
+          updatedAt: now,
+        })
+        .where(inArray(pluggyTransactions.id, chunk))
+        .run();
+    });
+    onProgress?.(Math.min(i + chunk.length, total), total);
+    await yieldToUi();
+  }
+
+  return total;
 }
 
-/** Importa em lote os IDs informados. */
-export function bulkImportStaging(stagingIds: string[]): number {
-  let count = 0;
-  for (const id of stagingIds) {
-    try {
-      importStagingTransaction(id);
-      count += 1;
-    } catch {
-      // ignora falha individual e continua
+/** Importa uma lista de transações de staging em batches de 10 itens (1 transação SQLite por batch). */
+async function importStagingBatchList(
+  rows: PluggyTransaction[],
+  bankAccountsMap: Map<string, BankAccount>,
+  cardsMap: Map<string, Card>,
+  allCats: Category[],
+  onProgress?: BulkProgressCallback
+): Promise<number> {
+  const total = rows.length;
+  if (total === 0) return 0;
+
+  onProgress?.(0, total);
+  let importedCount = 0;
+  const now = Date.now();
+
+  for (let i = 0; i < total; i += BATCH_SIZE) {
+    const chunk = rows.slice(i, i + BATCH_SIZE);
+    const chunkExtIds = chunk.map((r) => r.externalId).filter(Boolean);
+
+    const existingRows =
+      chunkExtIds.length > 0
+        ? db
+            .select({ id: transactions.id, externalId: transactions.externalId })
+            .from(transactions)
+            .where(inArray(transactions.externalId, chunkExtIds))
+            .all()
+        : [];
+
+    const existingExtMap = new Map<string, string>();
+    for (const r of existingRows) {
+      if (r.externalId) existingExtMap.set(r.externalId, r.id);
     }
+
+    expo.withTransactionSync(() => {
+      for (const staging of chunk) {
+        try {
+          importSingleInTransaction(
+            staging,
+            bankAccountsMap,
+            cardsMap,
+            allCats,
+            existingExtMap,
+            now
+          );
+          importedCount += 1;
+        } catch {
+          // ignora falha individual e continua no lote
+        }
+      }
+    });
+
+    onProgress?.(Math.min(i + chunk.length, total), total);
+    await yieldToUi();
   }
-  return count;
+
+  return importedCount;
+}
+
+/** Importa em lote (batches de 10 itens) os IDs informados. */
+export async function bulkImportStaging(
+  stagingIds: string[],
+  onProgress?: BulkProgressCallback
+): Promise<number> {
+  if (stagingIds.length === 0) return 0;
+
+  const rows = db
+    .select()
+    .from(pluggyTransactions)
+    .where(inArray(pluggyTransactions.id, stagingIds))
+    .all();
+
+  const bankAccountsMap = new Map(
+    db
+      .select()
+      .from(bankAccounts)
+      .all()
+      .map((a) => [a.id, a])
+  );
+  const cardsMap = new Map(
+    db
+      .select()
+      .from(cards)
+      .all()
+      .map((c) => [c.id, c])
+  );
+  const allCats = db.select().from(categories).all();
+
+  return importStagingBatchList(rows, bankAccountsMap, cardsMap, allCats, onProgress);
 }
 
 /**
- * Importa todas as transações pendentes "sem conflito":
+ * Importa todas as transações pendentes "sem conflito" em batches de 10 itens:
  * - Que não sejam pagamento de fatura (`isInvoicePayment === false`)
  * - Que não tenham candidatos de vínculo (`findMatchCandidates().length === 0`)
  * - Cuja conta do banco já tenha conta/cartão de destino mapeado no mimo
  */
-export function bulkImportConflictFree(items?: PluggyTransaction[]): {
+export async function bulkImportConflictFree(
+  items?: PluggyTransaction[],
+  onProgress?: BulkProgressCallback
+): Promise<{
   imported: number;
   skipped: number;
-} {
+}> {
   const list =
     items ??
     db
@@ -271,20 +411,37 @@ export function bulkImportConflictFree(items?: PluggyTransaction[]): {
       .where(eq(pluggyTransactions.reviewStatus, 'pending'))
       .all();
 
-  const accountsMap = new Map(
+  const bankAccountsMap = new Map(
     db
       .select()
       .from(bankAccounts)
       .all()
       .map((a) => [a.id, a])
   );
+  const cardsMap = new Map(
+    db
+      .select()
+      .from(cards)
+      .all()
+      .map((c) => [c.id, c])
+  );
+  const allCats = db.select().from(categories).all();
+  const catNameMap = new Map(allCats.map((c) => [c.id, c.name]));
 
-  let imported = 0;
+  const candidatePool = db
+    .select()
+    .from(transactions)
+    .where(and(isNull(transactions.externalId), ne(transactions.status, 'cancelled')))
+    .all();
+
+  const matchContext: MatchContext = { candidatePool, catMap: catNameMap };
+
+  const eligible: PluggyTransaction[] = [];
   let skipped = 0;
 
   for (const item of list) {
     if (item.reviewStatus !== 'pending') continue;
-    const bankAcc = accountsMap.get(item.bankAccountId) ?? null;
+    const bankAcc = bankAccountsMap.get(item.bankAccountId) ?? null;
     const hasMappedTarget =
       bankAcc?.type === 'CREDIT' ? !!bankAcc.localCardId : !!bankAcc?.localAccountId;
 
@@ -293,19 +450,23 @@ export function bulkImportConflictFree(items?: PluggyTransaction[]): {
       continue;
     }
 
-    const candidates = findMatchCandidates(item, bankAcc);
+    const candidates = findMatchCandidates(item, bankAcc, matchContext);
     if (candidates.length > 0) {
       skipped += 1;
       continue;
     }
 
-    try {
-      importStagingTransaction(item.id);
-      imported += 1;
-    } catch {
-      skipped += 1;
-    }
+    eligible.push(item);
   }
+
+  const imported = await importStagingBatchList(
+    eligible,
+    bankAccountsMap,
+    cardsMap,
+    allCats,
+    onProgress
+  );
+  skipped += eligible.length - imported;
 
   return { imported, skipped };
 }

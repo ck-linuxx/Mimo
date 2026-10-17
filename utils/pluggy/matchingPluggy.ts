@@ -42,6 +42,11 @@ export function descriptionSimilarity(a: string, b: string): number {
   return common / Math.max(tokensA.size, tokensB.size);
 }
 
+export interface MatchContext {
+  candidatePool?: Transaction[];
+  catMap?: Map<string, string>;
+}
+
 /**
  * Busca transações principais (`transactions`) que podem corresponder a um item do staging:
  * - Ainda sem `externalId` (não vinculadas a outra transação do banco)
@@ -53,33 +58,47 @@ export function descriptionSimilarity(a: string, b: string): number {
  */
 export function findMatchCandidates(
   staging: PluggyTransaction,
-  bankAccount?: BankAccount | null
+  bankAccount?: BankAccount | null,
+  context?: MatchContext
 ): MatchCandidate[] {
   const account =
-    bankAccount ??
-    db.select().from(bankAccounts).where(eq(bankAccounts.id, staging.bankAccountId)).get() ??
-    null;
+    bankAccount !== undefined
+      ? bankAccount
+      : (db.select().from(bankAccounts).where(eq(bankAccounts.id, staging.bankAccountId)).get() ??
+        null);
 
   const minDate = staging.date - WINDOW_DAYS * DAY_MS;
   const maxDate = staging.date + WINDOW_DAYS * DAY_MS;
 
-  const rows = db
-    .select()
-    .from(transactions)
-    .where(
-      and(
-        isNull(transactions.externalId),
-        ne(transactions.status, 'cancelled'),
-        eq(transactions.type, staging.type),
-        gte(transactions.date, minDate),
-        lte(transactions.date, maxDate)
+  const rows = context?.candidatePool
+    ? context.candidatePool.filter(
+        (tx) =>
+          tx.externalId == null &&
+          tx.status !== 'cancelled' &&
+          tx.type === staging.type &&
+          tx.date >= minDate &&
+          tx.date <= maxDate
       )
-    )
-    .all();
+    : db
+        .select()
+        .from(transactions)
+        .where(
+          and(
+            isNull(transactions.externalId),
+            ne(transactions.status, 'cancelled'),
+            eq(transactions.type, staging.type),
+            gte(transactions.date, minDate),
+            lte(transactions.date, maxDate)
+          )
+        )
+        .all();
 
-  const catMap = new Map<string, string>();
-  for (const c of db.select().from(categories).all()) {
-    catMap.set(c.id, c.name);
+  let catMap = context?.catMap;
+  if (!catMap) {
+    catMap = new Map<string, string>();
+    for (const c of db.select().from(categories).all()) {
+      catMap.set(c.id, c.name);
+    }
   }
 
   const candidates: MatchCandidate[] = [];
@@ -122,37 +141,58 @@ export function findMatchCandidates(
 export function searchManualLinkTargets(
   staging: PluggyTransaction,
   query: string,
-  limit = 30
+  limit = 30,
+  context?: MatchContext
 ): MatchCandidate[] {
   const q = normalizeText(query);
-  const rows = db
-    .select()
-    .from(transactions)
-    .where(and(isNull(transactions.externalId), ne(transactions.status, 'cancelled')))
-    .orderBy(desc(transactions.date))
-    .limit(150)
-    .all();
+  const rows = context?.candidatePool
+    ? context.candidatePool
+        .filter((tx) => tx.externalId == null && tx.status !== 'cancelled' && tx.type === staging.type)
+        .sort((a, b) => b.date - a.date)
+        .slice(0, 100)
+    : db
+        .select()
+        .from(transactions)
+        .where(
+          and(
+            isNull(transactions.externalId),
+            ne(transactions.status, 'cancelled'),
+            eq(transactions.type, staging.type)
+          )
+        )
+        .orderBy(desc(transactions.date))
+        .limit(100)
+        .all();
 
-  const catMap = new Map<string, string>();
-  for (const c of db.select().from(categories).all()) {
-    catMap.set(c.id, c.name);
+  let catMap = context?.catMap;
+  if (!catMap) {
+    catMap = new Map<string, string>();
+    for (const c of db.select().from(categories).all()) {
+      catMap.set(c.id, c.name);
+    }
   }
 
-  const filtered = rows.filter((tx) => {
-    if (!q) return true;
-    const descNorm = normalizeText(tx.description);
-    const amountStr = tx.amount.toFixed(2).replace('.', ',');
-    return descNorm.includes(q) || amountStr.includes(q);
-  });
+  const matches: MatchCandidate[] = [];
+  for (const tx of rows) {
+    const descMatch = !q || normalizeText(tx.description).includes(q);
+    const amountMatch = Math.abs(tx.amount - staging.amount) < 0.01;
+    if (!descMatch && !amountMatch) continue;
 
-  return filtered.slice(0, limit).map((tx) => {
     const dayDiff = Math.round(Math.abs(tx.date - staging.date) / DAY_MS);
-    return {
+    const sim = descriptionSimilarity(tx.description, staging.description);
+    const amountBonus = amountMatch ? -20 : 0;
+    const score = dayDiff * 5 - Math.round(sim * 20) + amountBonus;
+
+    matches.push({
       transaction: tx,
       categoryName: tx.categoryId ? (catMap.get(tx.categoryId) ?? null) : null,
-      score: dayDiff,
+      score,
       dayDiff,
-    };
-  });
+    });
+    if (matches.length >= limit) break;
+  }
+
+  matches.sort((a, b) => a.score - b.score);
+  return matches;
 }
 

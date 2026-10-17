@@ -14,30 +14,33 @@ interface UseCardsResult {
 }
 
 export function useCards(): UseCardsResult {
-  const [data, setData] = useState<Card[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<Card[]>(() => {
+    try {
+      return db
+        .select()
+        .from(cards)
+        .where(eq(cards.isActive, true))
+        .all();
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
+  const refetch = useCallback(() => {
     try {
       const result = db
         .select()
         .from(cards)
         .where(eq(cards.isActive, true))
         .all();
-
       setData(result);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar cartões');
-    } finally {
-      setLoading(false);
     }
-  }, [refreshKey]);
+  }, []);
 
   return { data, loading, error, refetch };
 }

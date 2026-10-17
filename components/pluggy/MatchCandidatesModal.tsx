@@ -2,13 +2,17 @@ import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { darkColors, lightColors, useTheme } from 'themes';
+import { useBreakpoint } from 'hooks/useBreakpoint';
 import { formatCurrency } from 'utils/formatCurrency';
+import { ActionButton } from 'components/ActionButton';
 import {
   findMatchCandidates,
   searchManualLinkTargets,
   type MatchCandidate,
-} from 'services/pluggy/matching';
-import type { EnrichedStagingItem } from 'hooks/pluggy/usePluggyInbox';
+} from 'utils/pluggy/matchingPluggy';
+import { queryClient } from 'services/queryClient';
+import { queryKeysPluggy } from 'constants/queryKeysPluggy';
+import type { EnrichedStagingItem, PluggyInboxData } from 'hooks/pluggy/usePluggyInbox';
 
 interface MatchCandidatesModalProps {
   visible: boolean;
@@ -25,21 +29,27 @@ export function MatchCandidatesModal({
 }: MatchCandidatesModalProps) {
   const { theme } = useTheme();
   const colors = theme === 'dark' ? darkColors : lightColors;
+  const { isTablet, isNotebookMode } = useBreakpoint();
   const [query, setQuery] = useState('');
+
+  const matchContext = useMemo(() => {
+    if (!visible) return undefined;
+    return queryClient.getQueryData<PluggyInboxData>(queryKeysPluggy.inbox())?.matchContext;
+  }, [visible, item]);
 
   const suggested = useMemo(() => {
     if (!item) return [];
-    return findMatchCandidates(item.staging, item.bankAccount);
-  }, [item]);
+    return findMatchCandidates(item.staging, item.bankAccount, matchContext);
+  }, [item, matchContext]);
 
   const manualResults = useMemo(() => {
     if (!item) return [];
     if (!query.trim() && suggested.length > 0) return [];
     const suggestedIds = new Set(suggested.map((s) => s.transaction.id));
-    return searchManualLinkTargets(item.staging, query).filter(
+    return searchManualLinkTargets(item.staging, query, 30, matchContext).filter(
       (c) => !suggestedIds.has(c.transaction.id)
     );
-  }, [item, query, suggested]);
+  }, [item, query, suggested, matchContext]);
 
   const renderCandidate = (c: MatchCandidate, highlight: boolean) => {
     const tx = c.transaction;
@@ -96,11 +106,22 @@ export function MatchCandidatesModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/60">
-        <TouchableOpacity className="flex-1" activeOpacity={1} onPress={onClose} />
+      <View
+        className="flex-1 bg-black/60"
+        style={{
+          justifyContent: isTablet ? 'center' : 'flex-end',
+          alignItems: isTablet ? 'center' : undefined,
+          padding: isTablet ? 24 : 0,
+        }}>
+        {!isTablet && <TouchableOpacity className="flex-1" activeOpacity={1} onPress={onClose} />}
         <View
-          className="max-h-[82%] rounded-t-3xl p-5"
-          style={{ backgroundColor: colors.cardBackground }}>
+          className={isTablet ? 'max-h-[85%] w-full rounded-3xl p-5' : 'max-h-[82%] rounded-t-3xl p-5'}
+          style={{
+            backgroundColor: colors.cardBackground,
+            maxWidth: isTablet ? (isNotebookMode ? 640 : 540) : undefined,
+            borderWidth: isTablet ? 1 : 0,
+            borderColor: colors.borderColor,
+          }}>
           <View className="mb-3 flex-row items-center justify-between">
             <View className="mr-3 flex-1">
               <Text className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary">
@@ -114,12 +135,7 @@ export function MatchCandidatesModal({
                 </Text>
               )}
             </View>
-            <TouchableOpacity
-              onPress={onClose}
-              className="h-8 w-8 items-center justify-center rounded-lg"
-              style={{ backgroundColor: colors.iconBackground }}>
-              <Feather name="x" size={16} color={colors.textPrimary} />
-            </TouchableOpacity>
+            <ActionButton icon="x" onPress={onClose} iconSize={18} />
           </View>
 
           <Text className="mb-3 text-xs leading-4 text-light-text-secondary dark:text-dark-text-secondary">

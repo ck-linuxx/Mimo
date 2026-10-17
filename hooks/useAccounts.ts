@@ -14,30 +14,33 @@ interface UseAccountsResult {
 }
 
 export function useAccounts(): UseAccountsResult {
-  const [data, setData] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<Account[]>(() => {
+    try {
+      return db
+        .select()
+        .from(accounts)
+        .where(eq(accounts.isActive, true))
+        .all();
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
+  const refetch = useCallback(() => {
     try {
       const result = db
         .select()
         .from(accounts)
         .where(eq(accounts.isActive, true))
         .all();
-
       setData(result);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar contas');
-    } finally {
-      setLoading(false);
     }
-  }, [refreshKey]);
+  }, []);
 
   return { data, loading, error, refetch };
 }

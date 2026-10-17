@@ -341,7 +341,7 @@ export function TransactionDetailsModal({
                         value={
                           transaction.externalStatus === 'PENDING'
                             ? 'Banco (Open Finance · Pendente no banco)'
-                            : 'Banco (Open Finance · Efetivada)'
+                            : 'Banco (Open Finance · Paga)'
                         }
                         iconColor={colors.primaryGold}
                         iconBg={colors.primaryGold + '20'}

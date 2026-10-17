@@ -1,5 +1,8 @@
+import { queryClient } from 'services/queryClient';
+import { queryKeysPluggy } from 'constants/queryKeysPluggy';
 import { getApiKey } from './auth';
 import { getManualItemIds } from './credentials';
+import { PLUGGY_ROUTES } from './routes';
 import {
   PluggyError,
   type PluggyAccount,
@@ -8,8 +11,6 @@ import {
   type PluggyListResponse,
   type PluggyTransactionDto,
 } from './types';
-
-const BASE_URL = 'https://api.pluggy.ai';
 
 type Query = Record<string, string | number | undefined>;
 
@@ -23,10 +24,17 @@ function buildQuery(query?: Query): string {
 
 /**
  * GET autenticado. Em 401 renova a apiKey e tenta UMA vez de novo.
- * `path` pode já conter a query string (usado pelo cursor `next` da Pluggy).
+ * Suporta URL absoluta (ex: de PLUGGY_ROUTES) ou caminho relativo.
  */
-async function get<T>(path: string, query?: Query): Promise<T> {
-  const url = `${BASE_URL}${path}${buildQuery(query)}`;
+async function get<T>(pathOrUrl: string, query?: Query, opts?: { silentAuthFail?: boolean }): Promise<T> {
+  const fullBase = pathOrUrl.startsWith('http')
+    ? pathOrUrl
+    : `${PLUGGY_ROUTES.BASE_URL}${pathOrUrl}`;
+  const url = `${fullBase}${buildQuery(query)}`;
+
+  if (!url.startsWith(`${PLUGGY_ROUTES.BASE_URL}/`)) {
+    throw new PluggyError('unknown', 'URL de destino inválida para a API da Pluggy.');
+  }
 
   const attempt = async (forceRefresh: boolean): Promise<Response> => {
     const apiKey = await getApiKey(forceRefresh);
@@ -34,8 +42,12 @@ async function get<T>(path: string, query?: Query): Promise<T> {
       return await fetch(url, {
         headers: { Accept: 'application/json', 'X-API-KEY': apiKey },
       });
-    } catch {
-      throw new PluggyError('network', 'Sem conexão com a Pluggy. Verifique sua internet.');
+    } catch (err) {
+      if (__DEV__) {
+        console.error(`[Pluggy API Error] Falha de rede ao acessar ${pathOrUrl}:`, err);
+      }
+      const detail = err instanceof Error ? ` (${err.message})` : '';
+      throw new PluggyError('network', `Sem conexão com a Pluggy${detail}.`);
     }
   };
 
@@ -43,53 +55,116 @@ async function get<T>(path: string, query?: Query): Promise<T> {
   if (response.status === 401) response = await attempt(true);
 
   if (response.status === 401 || response.status === 403) {
+    if (__DEV__ && !opts?.silentAuthFail) {
+      console.error(`[Pluggy API Error] Credenciais recusadas em ${pathOrUrl}: HTTP ${response.status}`);
+    }
     throw new PluggyError('auth', 'Credenciais da Pluggy recusadas.', response.status);
   }
   if (response.status === 429) {
+    if (__DEV__) {
+      console.error(`[Pluggy API Error] Rate limit em ${pathOrUrl}: HTTP 429`);
+    }
     throw new PluggyError('rate_limit', 'Limite de requisições da Pluggy atingido.', 429);
   }
   if (response.status === 404) {
+    if (__DEV__) {
+      console.warn(`[Pluggy API] Recurso não encontrado em ${pathOrUrl}: HTTP 404`);
+    }
     throw new PluggyError('unknown', 'Recurso não encontrado na Pluggy.', 404);
   }
   if (!response.ok) {
-    throw new PluggyError('server', `Erro da Pluggy (HTTP ${response.status}).`, response.status);
+    let errorBody = '';
+    try {
+      errorBody = await response.text();
+      if (__DEV__) {
+        console.error(`[Pluggy API Error] Erro HTTP ${response.status} em ${pathOrUrl}:`, errorBody);
+      }
+    } catch {
+      if (__DEV__) {
+        console.error(`[Pluggy API Error] Erro HTTP ${response.status} em ${pathOrUrl}`);
+      }
+    }
+    throw new PluggyError('server', `Erro da Pluggy (HTTP ${response.status}). ${errorBody}`.trim(), response.status);
   }
   return (await response.json()) as T;
 }
 
 export async function getItem(itemId: string): Promise<PluggyItem> {
-  return get<PluggyItem>(`/items/${encodeURIComponent(itemId)}`);
+  return queryClient.query({
+    queryKey: queryKeysPluggy.item(itemId),
+    queryFn: () => get<PluggyItem>(PLUGGY_ROUTES.item(itemId)),
+  });
 }
 
 /**
- * Descobre os itens (conexões) da conta Pluggy do usuário.
- * 1) Tenta `GET /items`. 2) Se não retornar nada, usa os Item IDs informados manualmente.
- * TODO(Fase 0): confirmar com a conta real se `GET /items` lista as conexões do Meu Pluggy.
+ * Descobre os itens (conexões) da conta Pluggy do usuário usando o cache do queryClient.
+ * 1) Tenta `GET /v2/items` (requer permissão especial na Pluggy; por padrão retorna 401/403).
+ * 2) Se falhar ou não retornar nada, utiliza os Item IDs informados manualmente pelo usuário.
  */
-export async function listItems(): Promise<PluggyItem[]> {
+async function fetchItemsFromApi(): Promise<PluggyItem[]> {
+  const items: PluggyItem[] = [];
+  const seenIds = new Set<string>();
+
   try {
-    const data = await get<PluggyListResponse<PluggyItem>>('/items');
-    if (Array.isArray(data?.results) && data.results.length > 0) return data.results;
+    const data = await get<PluggyListResponse<PluggyItem>>(PLUGGY_ROUTES.ITEMS_V2, undefined, {
+      silentAuthFail: true,
+    });
+    if (Array.isArray(data?.results)) {
+      for (const item of data.results) {
+        if (item?.id && !seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          items.push(item);
+        }
+      }
+    }
   } catch (e) {
-    if (e instanceof PluggyError && (e.kind === 'network' || e.kind === 'auth')) throw e;
-    // Endpoint indisponível/sem permissão: cai no fallback manual.
+    if (e instanceof PluggyError && e.kind === 'network') throw e;
+    // GET /v2/items é desabilitado por padrão pela Pluggy para planos de desenvolvedor
+    // (retorna 401 ou 403 LIST_ITEMS_FEATURE_NOT_ENABLED). Prossegue para os Item IDs manuais.
   }
 
-  const manualIds = await getManualItemIds();
-  const items: PluggyItem[] = [];
-  for (const id of manualIds) {
-    try {
-      items.push(await getItem(id));
-    } catch (e) {
-      if (e instanceof PluggyError && (e.kind === 'network' || e.kind === 'auth')) throw e;
+  const manualIds = (await getManualItemIds()).filter((id) => !seenIds.has(id));
+  if (manualIds.length > 0) {
+    const results = await Promise.all(
+      manualIds.map(async (id) => {
+        try {
+          return await getItem(id);
+        } catch (e) {
+          if (__DEV__) {
+            console.error(`[Pluggy API] Erro ao buscar Item ID manual "${id}":`, e);
+          }
+          if (e instanceof PluggyError && (e.kind === 'network' || e.kind === 'auth')) throw e;
+          return null;
+        }
+      })
+    );
+
+    for (const item of results) {
+      if (item?.id && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        items.push(item);
+      }
     }
   }
+
   return items;
 }
 
+export async function listItems(): Promise<PluggyItem[]> {
+  return queryClient.query({
+    queryKey: queryKeysPluggy.items(),
+    queryFn: fetchItemsFromApi,
+  });
+}
+
 export async function listAccounts(itemId: string): Promise<PluggyAccount[]> {
-  const data = await get<PluggyListResponse<PluggyAccount>>('/accounts', { itemId });
-  return data?.results ?? [];
+  return queryClient.query({
+    queryKey: queryKeysPluggy.accounts(itemId),
+    queryFn: async () => {
+      const data = await get<PluggyListResponse<PluggyAccount>>(PLUGGY_ROUTES.ACCOUNTS, { itemId });
+      return data?.results ?? [];
+    },
+  });
 }
 
 export interface ListTransactionsParams {
@@ -103,8 +178,7 @@ export interface ListTransactionsParams {
 
 /**
  * Percorre `GET /v2/transactions` (paginação por cursor) e entrega cada página.
- * Para a próxima página, a Pluggy devolve `next` (query string pronta), que é
- * anexada como está ao caminho do endpoint. Termina quando `next` é null.
+ * A requisição inicial passa pelo queryClient.query usando sua chave com parâmetros.
  */
 export async function fetchAllTransactions(
   params: ListTransactionsParams,
@@ -114,11 +188,16 @@ export async function fetchAllTransactions(
     throw new PluggyError('unknown', 'dateFrom e createdAtFrom não podem ser usados juntos.');
   }
 
-  let page = await get<PluggyCursorResponse<PluggyTransactionDto>>('/v2/transactions', {
+  const queryParams = {
     accountId: params.accountId,
     dateFrom: params.dateFrom,
     dateTo: params.dateTo,
     createdAtFrom: params.createdAtFrom,
+  };
+
+  let page = await queryClient.query({
+    queryKey: queryKeysPluggy.transactions(queryParams),
+    queryFn: () => get<PluggyCursorResponse<PluggyTransactionDto>>(PLUGGY_ROUTES.TRANSACTIONS_V2, queryParams),
   });
   await onPage(page.results ?? []);
 
@@ -126,8 +205,7 @@ export async function fetchAllTransactions(
   const seen = new Set<string>();
   while (page.next && !seen.has(page.next)) {
     seen.add(page.next);
-    page = await get<PluggyCursorResponse<PluggyTransactionDto>>(`/v2/transactions${page.next}`);
+    page = await get<PluggyCursorResponse<PluggyTransactionDto>>(PLUGGY_ROUTES.transactionsV2Next(page.next));
     await onPage(page.results ?? []);
   }
 }
-

@@ -62,6 +62,7 @@ Metas com `status = cancelled` **não aparecem** em nenhuma das duas tabs.
 - Spring constants definidas no topo de cada arquivo: `SPRING_BOUNCE` e `SPRING_MODAL`
 - Nunca passar literais `{ damping, stiffness }` diretamente em `withSpring()`
 - Alertas sempre via `useCustomAlert` + `<CustomAlert />` — nunca `Alert` do RN
+- **Confirmação obrigatória em botões de ação:** Todo botão de ação sobre transações e lançamentos (ex.: Importar, Ocultar/Ignorar, Desfazer, Vincular, Aplicar atualização do banco e Ações em lote) **deve** possuir um modal de confirmação explícito usando `useCustomAlert.showConfirm()`, detalhando a ação e apresentando os dados chave (descrição, conta/cartão, data e valor) antes de executar qualquer mutação.
 - Cancelamento lógico (`status = cancelled`) — nunca `DELETE` físico em metas
 - Theming via classes NativeWind; `style={{}}` apenas para cores dinâmicas (cor da meta, ícones)
 

@@ -32,6 +32,13 @@ function normalize(s: string) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+const INDEXED_BANKS = BANKS.map((bank) => ({
+  bank,
+  nameNorm: normalize(bank.name),
+  fullNameNorm: normalize(bank.fullName),
+  codeStr: String(bank.code).padStart(3, '0'),
+}));
+
 function PageDot({ isActive, color }: { isActive: boolean; color: string }) {
   const dotWidth = useSharedValue(isActive ? 20 : 6);
 
@@ -113,12 +120,12 @@ export function BankPicker({ selectedCode, onSelect, colors, accentColor }: Bank
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
     if (!q) return BANKS;
-    return BANKS.filter(
-      (b) =>
-        normalize(b.name).includes(q) ||
-        normalize(b.fullName).includes(q) ||
-        String(b.code).padStart(3, '0').includes(q),
-    );
+    return INDEXED_BANKS.filter(
+      (item) =>
+        item.nameNorm.includes(q) ||
+        item.fullNameNorm.includes(q) ||
+        item.codeStr.includes(q),
+    ).map((item) => item.bank);
   }, [query]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / BANKS_PER_PAGE));

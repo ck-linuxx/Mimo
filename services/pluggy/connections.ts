@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from 'db/client';
 import { generateId } from 'utils/generateId';
 import {
@@ -111,12 +111,18 @@ export async function refreshConnections(): Promise<RefreshConnectionsResult> {
   let accountsCount = 0;
   let needsAction = 0;
 
-  for (const item of items) {
+  const accountsByItem = await Promise.all(
+    items.map(async (item) => ({
+      item,
+      accounts: await listAccounts(item.id),
+    }))
+  );
+
+  for (const { item, accounts: itemAccounts } of accountsByItem) {
     const connection = upsertConnection(item);
     if (itemNeedsExternalAction(item.status)) needsAction += 1;
 
-    const accounts = await listAccounts(item.id);
-    for (const account of accounts) {
+    for (const account of itemAccounts) {
       upsertBankAccount(connection.id, account);
       accountsCount += 1;
     }
@@ -151,11 +157,12 @@ export function getConnectionsWithAccounts(): {
 }
 
 export function countPendingTransactions(): number {
-  return db
-    .select({ id: pluggyTransactions.id })
+  const row = db
+    .select({ count: sql<number>`count(*)` })
     .from(pluggyTransactions)
     .where(eq(pluggyTransactions.reviewStatus, 'pending'))
-    .all().length;
+    .get();
+  return row?.count ?? 0;
 }
 
 /**
@@ -187,14 +194,24 @@ export function hasPendingForAccount(bankAccountId: string): boolean {
   );
 }
 
+export interface CreateLocalTargetOptions {
+  name?: string;
+  color?: string | null;
+  icon?: string | null;
+}
+
 /**
  * Cria no mimo a conta (BANK) ou o cartão (CREDIT) correspondente e já vincula.
+ * Suporta customização de nome, cor e ícone da conta/cartão.
  * `accounts.balance` fica em 0: o saldo do banco NÃO é gravado (só transações aprovadas
  * entram na conta; o saldo do banco é exibido apenas como referência).
  */
-export function createLocalTargetFor(bankAccountId: string): void {
+export function createLocalTargetFor(
+  bankAccountId: string,
+  options?: CreateLocalTargetOptions
+): { accountId?: string; cardId?: string } | undefined {
   const bank = db.select().from(bankAccounts).where(eq(bankAccounts.id, bankAccountId)).get();
-  if (!bank) return;
+  if (!bank) return undefined;
 
   const connection = db
     .select()
@@ -202,6 +219,7 @@ export function createLocalTargetFor(bankAccountId: string): void {
     .where(eq(bankConnections.id, bank.connectionId))
     .get();
   const label = [connection?.connectorName, bank.name].filter(Boolean).join(' · ');
+  const targetName = options?.name?.trim() || label || bank.name;
   const now = Date.now();
 
   if (bank.type === 'CREDIT') {
@@ -209,30 +227,35 @@ export function createLocalTargetFor(bankAccountId: string): void {
     db.insert(cards)
       .values({
         id: cardId,
-        name: label || bank.name,
+        name: targetName,
         lastFourDigits: bank.number ? bank.number.slice(-4) : null,
         creditLimit: bank.creditLimit,
         closingDay: bank.closingDay,
         dueDay: bank.dueDay,
+        color: options?.color ?? null,
+        icon: options?.icon ?? null,
         isActive: true,
         createdAt: now,
       })
       .run();
     setAccountMapping(bankAccountId, { localCardId: cardId });
-    return;
+    return { cardId };
   }
 
   const accountId = generateId();
   db.insert(accounts)
     .values({
       id: accountId,
-      name: label || bank.name,
+      name: targetName,
       type: 'checking',
       balance: 0,
+      color: options?.color ?? null,
+      icon: options?.icon ?? null,
       isActive: true,
       createdAt: now,
       updatedAt: now,
     })
     .run();
   setAccountMapping(bankAccountId, { localAccountId: accountId });
+  return { accountId };
 }

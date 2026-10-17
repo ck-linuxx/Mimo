@@ -8,74 +8,85 @@ import {
   importStagingTransaction,
   linkStagingTransaction,
   undoStagingDecision,
+  type BulkProgressCallback,
 } from 'services/pluggy/reviewService';
-import type { StagingImportOverrides } from 'services/pluggy/mappers';
+import type { StagingImportOverrides } from 'utils/pluggy/mappersPluggy';
+import { queryClient } from 'services/queryClient';
+import { queryKeysPluggy } from 'constants/queryKeysPluggy';
 
 export function usePluggyReview(onChanged?: () => void) {
+  const notifyChanges = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeysPluggy.all });
+    onChanged?.();
+  }, [onChanged]);
+
   const importItem = useCallback(
     (stagingId: string, overrides?: StagingImportOverrides) => {
       const txId = importStagingTransaction(stagingId, overrides);
-      onChanged?.();
+      notifyChanges();
       return txId;
     },
-    [onChanged]
+    [notifyChanges]
   );
 
   const linkItem = useCallback(
     (stagingId: string, targetTransactionId: string) => {
       linkStagingTransaction(stagingId, targetTransactionId);
-      onChanged?.();
+      notifyChanges();
     },
-    [onChanged]
+    [notifyChanges]
   );
 
   const ignoreItem = useCallback(
     (stagingId: string) => {
       ignoreStagingTransaction(stagingId);
-      onChanged?.();
+      notifyChanges();
     },
-    [onChanged]
+    [notifyChanges]
   );
 
   const undoItem = useCallback(
     (stagingId: string) => {
       undoStagingDecision(stagingId);
-      onChanged?.();
+      notifyChanges();
     },
-    [onChanged]
+    [notifyChanges]
   );
 
   const applyBankUpdate = useCallback(
     (stagingId: string) => {
       applyBankUpdateToTransaction(stagingId);
-      onChanged?.();
+      notifyChanges();
     },
-    [onChanged]
+    [notifyChanges]
   );
 
   const importSelected = useCallback(
-    (stagingIds: string[]) => {
-      const count = bulkImportStaging(stagingIds);
-      onChanged?.();
+    async (stagingIds: string[], onProgress?: BulkProgressCallback) => {
+      const count = await bulkImportStaging(stagingIds, onProgress);
+      notifyChanges();
       return count;
     },
-    [onChanged]
+    [notifyChanges]
   );
 
   const ignoreSelected = useCallback(
-    (stagingIds: string[]) => {
-      const count = bulkIgnoreStaging(stagingIds);
-      onChanged?.();
+    async (stagingIds: string[], onProgress?: BulkProgressCallback) => {
+      const count = await bulkIgnoreStaging(stagingIds, onProgress);
+      notifyChanges();
       return count;
     },
-    [onChanged]
+    [notifyChanges]
   );
 
-  const importConflictFree = useCallback(() => {
-    const res = bulkImportConflictFree();
-    onChanged?.();
-    return res;
-  }, [onChanged]);
+  const importConflictFree = useCallback(
+    async (onProgress?: BulkProgressCallback) => {
+      const res = await bulkImportConflictFree(undefined, onProgress);
+      notifyChanges();
+      return res;
+    },
+    [notifyChanges]
+  );
 
   return {
     importItem,
@@ -88,4 +99,3 @@ export function usePluggyReview(onChanged?: () => void) {
     importConflictFree,
   };
 }
-

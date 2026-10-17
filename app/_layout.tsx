@@ -22,6 +22,8 @@ import { seedDefaultCategories } from 'utils/seedCategories';
 import { Loading } from 'components/Loading';
 import { AppButton } from 'components/AppButton';
 import { ThemeProvider, darkColors, lightColors, useTheme } from 'themes';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from 'services/queryClient';
 import { useSettings } from 'hooks/useSettings';
 import { useOnlineSync } from 'hooks/pluggy/useOnlineSync';
 import '../global.css';
@@ -233,13 +235,15 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <BiometricGate>
-            <AppNavigator />
-          </BiometricGate>
-        </ThemeProvider>
-      </SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <BiometricGate>
+              <AppNavigator />
+            </BiometricGate>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }

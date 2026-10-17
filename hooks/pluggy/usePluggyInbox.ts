@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { desc, eq } from 'drizzle-orm';
 import { db } from 'db/client';
 import {
@@ -16,9 +17,16 @@ import {
   type PluggyTransaction,
   type Transaction,
 } from 'db/schema';
-import { isInvoicePayment, suggestCategoryId } from 'services/pluggy/mappers';
-import { findMatchCandidates, type MatchCandidate } from 'services/pluggy/matching';
+import { isInvoicePayment, suggestCategoryId } from 'utils/pluggy/mappersPluggy';
+import {
+  findMatchCandidates,
+  type MatchCandidate,
+  type MatchContext,
+} from 'utils/pluggy/matchingPluggy';
+import { countPendingTransactions } from 'services/pluggy/connections';
 import { subscribeSyncState } from 'services/pluggy/syncService';
+import { queryClient } from 'services/queryClient';
+import { queryKeysPluggy } from 'constants/queryKeysPluggy';
 
 export interface EnrichedStagingItem {
   staging: PluggyTransaction;
@@ -33,10 +41,13 @@ export interface EnrichedStagingItem {
   linkedTransaction: Transaction | null;
 }
 
+export type ConflictFilter = 'all' | 'without_conflict' | 'with_conflict';
+
 export interface InboxFiltersState {
   status: PluggyReviewStatus;
   bankAccountId: string | null;
   search: string;
+  conflictFilter: ConflictFilter;
 }
 
 export interface InboxCounts {
@@ -44,6 +55,108 @@ export interface InboxCounts {
   imported: number;
   linked: number;
   ignored: number;
+  pendingConflicts: number;
+  pendingConflictFree: number;
+}
+
+export interface PluggyInboxData {
+  allItems: EnrichedStagingItem[];
+  bankAccountsList: BankAccount[];
+  counts: InboxCounts;
+  matchContext: MatchContext;
+}
+
+export function fetchPluggyInboxData(): PluggyInboxData {
+  const stagingRows = db
+    .select()
+    .from(pluggyTransactions)
+    .orderBy(desc(pluggyTransactions.date))
+    .all();
+
+  const bankAccRows = db.select().from(bankAccounts).all();
+  const connRows = db.select().from(bankConnections).all();
+  const localAccRows = db.select().from(accounts).all();
+  const localCardRows = db.select().from(cards).all();
+  const allCats = db.select().from(categories).all();
+  const allTxs = db.select().from(transactions).all();
+
+  const bankAccMap = new Map(bankAccRows.map((a) => [a.id, a]));
+  const connMap = new Map(connRows.map((c) => [c.id, c]));
+  const localAccMap = new Map(localAccRows.map((a) => [a.id, a.name]));
+  const localCardMap = new Map(localCardRows.map((c) => [c.id, c.name]));
+  const catMap = new Map(allCats.map((c) => [c.id, c]));
+  const catNameMap = new Map(allCats.map((c) => [c.id, c.name]));
+  const txMap = new Map(allTxs.map((t) => [t.id, t]));
+  const candidatePool = allTxs.filter((t) => t.externalId == null && t.status !== 'cancelled');
+  const matchContext: MatchContext = { candidatePool, catMap: catNameMap };
+
+  const nextCounts: InboxCounts = {
+    pending: 0,
+    imported: 0,
+    linked: 0,
+    ignored: 0,
+    pendingConflicts: 0,
+    pendingConflictFree: 0,
+  };
+
+  const enriched: EnrichedStagingItem[] = stagingRows.map((st) => {
+    nextCounts[st.reviewStatus] = (nextCounts[st.reviewStatus] ?? 0) + 1;
+
+    const bAcc = bankAccMap.get(st.bankAccountId) ?? null;
+    const conn = bAcc ? (connMap.get(bAcc.connectionId) ?? null) : null;
+
+    let localTargetName: string | null = null;
+    let hasMappedTarget = false;
+    if (bAcc?.type === 'CREDIT' && bAcc.localCardId) {
+      localTargetName = localCardMap.get(bAcc.localCardId) ?? null;
+      hasMappedTarget = !!localTargetName;
+    } else if (bAcc?.localAccountId) {
+      localTargetName = localAccMap.get(bAcc.localAccountId) ?? null;
+      hasMappedTarget = !!localTargetName;
+    }
+
+    const suggestedCatId = suggestCategoryId(
+      { category: st.category, description: st.description, type: st.type },
+      allCats
+    );
+    const suggestedCategory = suggestedCatId ? (catMap.get(suggestedCatId) ?? null) : null;
+
+    const candidates =
+      st.reviewStatus === 'pending' ? findMatchCandidates(st, bAcc, matchContext) : [];
+    const linkedTransaction = st.importedTransactionId
+      ? (txMap.get(st.importedTransactionId) ?? null)
+      : null;
+
+    const invoicePayment = isInvoicePayment(st);
+    if (st.reviewStatus === 'pending') {
+      const hasConflict = !hasMappedTarget || invoicePayment || candidates.length > 0;
+      if (hasConflict) {
+        nextCounts.pendingConflicts += 1;
+      } else {
+        nextCounts.pendingConflictFree += 1;
+      }
+    }
+
+    return {
+      staging: st,
+      bankAccount: bAcc,
+      connection: conn,
+      localTargetName,
+      hasMappedTarget,
+      suggestedCategory,
+      bestCandidate: candidates[0] ?? null,
+      candidatesCount: candidates.length,
+      isInvoicePayment: invoicePayment,
+      linkedTransaction,
+    };
+  });
+
+  return {
+    allItems: enriched,
+    bankAccountsList: bankAccRows,
+    counts: nextCounts,
+    matchContext,
+  };
 }
 
 export function usePluggyInbox(initialStatus: PluggyReviewStatus = 'pending') {
@@ -51,105 +164,35 @@ export function usePluggyInbox(initialStatus: PluggyReviewStatus = 'pending') {
     status: initialStatus,
     bankAccountId: null,
     search: '',
-  });
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [allItems, setAllItems] = useState<EnrichedStagingItem[]>([]);
-  const [bankAccountsList, setBankAccountsList] = useState<BankAccount[]>([]);
-  const [counts, setCounts] = useState<InboxCounts>({
-    pending: 0,
-    imported: 0,
-    linked: 0,
-    ignored: 0,
+    conflictFilter: 'all',
   });
 
-  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const query = useQuery({
+    queryKey: queryKeysPluggy.inbox(),
+    queryFn: fetchPluggyInboxData,
+  });
 
-  // Atualiza automaticamente quando uma sincronização em background/foreground termina
+  // Atualiza automaticamente o cache do React Query quando uma sincronização termina
   useEffect(() => {
     let prevSyncing = false;
     return subscribeSyncState((s) => {
       if (prevSyncing && !s.syncing) {
-        setRefreshKey((k) => k + 1);
+        queryClient.invalidateQueries({ queryKey: queryKeysPluggy.all });
       }
       prevSyncing = s.syncing;
     });
   }, []);
 
-  useEffect(() => {
-    setLoading(true);
-    try {
-      const stagingRows = db
-        .select()
-        .from(pluggyTransactions)
-        .orderBy(desc(pluggyTransactions.date))
-        .all();
-
-      const bankAccRows = db.select().from(bankAccounts).all();
-      const connRows = db.select().from(bankConnections).all();
-      const localAccRows = db.select().from(accounts).all();
-      const localCardRows = db.select().from(cards).all();
-      const allCats = db.select().from(categories).all();
-      const allTxs = db.select().from(transactions).all();
-
-      setBankAccountsList(bankAccRows);
-
-      const bankAccMap = new Map(bankAccRows.map((a) => [a.id, a]));
-      const connMap = new Map(connRows.map((c) => [c.id, c]));
-      const localAccMap = new Map(localAccRows.map((a) => [a.id, a.name]));
-      const localCardMap = new Map(localCardRows.map((c) => [c.id, c.name]));
-      const catMap = new Map(allCats.map((c) => [c.id, c]));
-      const txMap = new Map(allTxs.map((t) => [t.id, t]));
-
-      const nextCounts: InboxCounts = { pending: 0, imported: 0, linked: 0, ignored: 0 };
-
-      const enriched: EnrichedStagingItem[] = stagingRows.map((st) => {
-        nextCounts[st.reviewStatus] = (nextCounts[st.reviewStatus] ?? 0) + 1;
-
-        const bAcc = bankAccMap.get(st.bankAccountId) ?? null;
-        const conn = bAcc ? (connMap.get(bAcc.connectionId) ?? null) : null;
-
-        let localTargetName: string | null = null;
-        let hasMappedTarget = false;
-        if (bAcc?.type === 'CREDIT' && bAcc.localCardId) {
-          localTargetName = localCardMap.get(bAcc.localCardId) ?? null;
-          hasMappedTarget = !!localTargetName;
-        } else if (bAcc?.localAccountId) {
-          localTargetName = localAccMap.get(bAcc.localAccountId) ?? null;
-          hasMappedTarget = !!localTargetName;
-        }
-
-        const suggestedCatId = suggestCategoryId(
-          { category: st.category, description: st.description, type: st.type },
-          allCats
-        );
-        const suggestedCategory = suggestedCatId ? (catMap.get(suggestedCatId) ?? null) : null;
-
-        const candidates = st.reviewStatus === 'pending' ? findMatchCandidates(st, bAcc) : [];
-        const linkedTransaction = st.importedTransactionId
-          ? (txMap.get(st.importedTransactionId) ?? null)
-          : null;
-
-        return {
-          staging: st,
-          bankAccount: bAcc,
-          connection: conn,
-          localTargetName,
-          hasMappedTarget,
-          suggestedCategory,
-          bestCandidate: candidates[0] ?? null,
-          candidatesCount: candidates.length,
-          isInvoicePayment: isInvoicePayment(st),
-          linkedTransaction,
-        };
-      });
-
-      setCounts(nextCounts);
-      setAllItems(enriched);
-    } finally {
-      setLoading(false);
-    }
-  }, [refreshKey]);
+  const allItems = query.data?.allItems ?? [];
+  const bankAccountsList = query.data?.bankAccountsList ?? [];
+  const counts = query.data?.counts ?? {
+    pending: 0,
+    imported: 0,
+    linked: 0,
+    ignored: 0,
+    pendingConflicts: 0,
+    pendingConflictFree: 0,
+  };
 
   const filteredItems = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
@@ -157,6 +200,16 @@ export function usePluggyInbox(initialStatus: PluggyReviewStatus = 'pending') {
       if (item.staging.reviewStatus !== filters.status) return false;
       if (filters.bankAccountId && item.staging.bankAccountId !== filters.bankAccountId) {
         return false;
+      }
+      if (filters.status === 'pending' && filters.conflictFilter && filters.conflictFilter !== 'all') {
+        const itemHasConflict =
+          !item.hasMappedTarget || item.isInvoicePayment || item.candidatesCount > 0;
+        if (filters.conflictFilter === 'with_conflict' && !itemHasConflict) {
+          return false;
+        }
+        if (filters.conflictFilter === 'without_conflict' && itemHasConflict) {
+          return false;
+        }
       }
       if (q) {
         const descMatch = item.staging.description.toLowerCase().includes(q);
@@ -175,38 +228,38 @@ export function usePluggyInbox(initialStatus: PluggyReviewStatus = 'pending') {
     bankAccounts: bankAccountsList,
     filters,
     setFilters,
-    loading,
-    refetch,
+    loading: query.isLoading,
+    isFetching: query.isFetching,
+    refetch: query.refetch,
   };
 }
 
-/** Hook leve apenas para o badge de transações pendentes em Settings / Home. */
-export function usePluggyPendingBadge(): { pendingCount: number; refetch: () => void } {
-  const [pendingCount, setPendingCount] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
+export function fetchPluggyPendingCount(): number {
+  return countPendingTransactions();
+}
 
-  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
-
-  useEffect(() => {
-    const rows = db
-      .select({ id: pluggyTransactions.id })
-      .from(pluggyTransactions)
-      .where(eq(pluggyTransactions.reviewStatus, 'pending'))
-      .all();
-    setPendingCount(rows.length);
-  }, [refreshKey]);
+/** Hook leve com React Query para o badge de transações pendentes em Settings / Home. */
+export function usePluggyPendingBadge(): {
+  pendingCount: number;
+  refetch: () => void;
+} {
+  const query = useQuery({
+    queryKey: queryKeysPluggy.pendingBadge(),
+    queryFn: fetchPluggyPendingCount,
+  });
 
   useEffect(() => {
-    return subscribeSyncState(() => {
-      const rows = db
-        .select({ id: pluggyTransactions.id })
-        .from(pluggyTransactions)
-        .where(eq(pluggyTransactions.reviewStatus, 'pending'))
-        .all();
-      setPendingCount(rows.length);
+    let prevSyncing = false;
+    return subscribeSyncState((s) => {
+      if (prevSyncing && !s.syncing) {
+        queryClient.invalidateQueries({ queryKey: queryKeysPluggy.pendingBadge() });
+      }
+      prevSyncing = s.syncing;
     });
   }, []);
 
-  return { pendingCount, refetch };
+  return {
+    pendingCount: query.data ?? 0,
+    refetch: query.refetch,
+  };
 }
-

@@ -25,6 +25,7 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/native": "^7.1.6",
     "@tanstack/react-form": "^1.28.6",
+    "@tanstack/react-query": "^5.104.4",
     "@tanstack/zod-form-adapter": "^0.42.1",
     "@wuba/react-native-echarts": "^3.0.1",
     "babel-plugin-inline-import": "^3.0.0",

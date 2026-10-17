@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db, expo } from 'db/client';
 import {
   bankAccounts,
@@ -6,12 +6,13 @@ import {
   pluggyTransactions,
   settings,
   type BankAccount,
+  type PluggyTransaction,
 } from 'db/schema';
 import { generateId } from 'utils/generateId';
+import { mapDtoToStagingValues } from 'utils/pluggy/mappersPluggy';
 import { hasCredentials } from './credentials';
 import { fetchAllTransactions } from './api';
 import { itemNeedsExternalAction, refreshConnections } from './connections';
-import { mapDtoToStagingValues } from './mappers';
 import { notifyNewPendingTransactions } from './notifications';
 import type { PluggyTransactionDto } from './types';
 
@@ -88,61 +89,74 @@ export function getLastGlobalSyncAt(): number | null {
 
 /**
  * Faz upsert de um lote de transações da Pluggy na tabela `pluggy_transactions` (staging),
- * dentro de uma única transação SQLite.
+ * dentro de uma única transação SQLite e usando Map em memória para evitar N+1 SELECTs.
  */
 function upsertStagingBatch(
   dtos: PluggyTransactionDto[],
   bankAccountId: string,
   now: number
 ): { inserted: number; updated: number } {
+  const externalIds = Array.from(
+    new Set(dtos.map((d) => d?.id).filter((id): id is string => Boolean(id)))
+  );
+  if (externalIds.length === 0) return { inserted: 0, updated: 0 };
+
   let inserted = 0;
   let updated = 0;
 
   expo.withTransactionSync(() => {
+    const existingRows = db
+      .select()
+      .from(pluggyTransactions)
+      .where(inArray(pluggyTransactions.externalId, externalIds))
+      .all();
+
+    const existingMap = new Map<string, PluggyTransaction>(
+      existingRows.map((row) => [row.externalId, row])
+    );
+
     for (const dto of dtos) {
       if (!dto?.id) continue;
       const mapped = mapDtoToStagingValues(dto, bankAccountId, now);
-      const existing = db
-        .select()
-        .from(pluggyTransactions)
-        .where(eq(pluggyTransactions.externalId, dto.id))
-        .get();
+      const existing = existingMap.get(dto.id);
 
       if (!existing) {
-        db.insert(pluggyTransactions)
-          .values({
-            id: generateId(),
-            ...mapped,
-            reviewStatus: 'pending',
-            importedTransactionId: null,
-            bankChangedAt: null,
-            reviewedAt: null,
-            createdAt: now,
-          })
-          .run();
+        const newRow: PluggyTransaction = {
+          id: generateId(),
+          ...mapped,
+          reviewStatus: 'pending',
+          importedTransactionId: null,
+          bankChangedAt: null,
+          reviewedAt: null,
+          createdAt: now,
+        };
+        db.insert(pluggyTransactions).values(newRow).run();
+        existingMap.set(dto.id, newRow);
         inserted += 1;
         continue;
       }
 
       if (existing.reviewStatus === 'pending' || existing.reviewStatus === 'ignored') {
         // Mantém reviewStatus ('ignored' NUNCA volta para 'pending')
+        const updatedFields = {
+          description: mapped.description,
+          amount: mapped.amount,
+          type: mapped.type,
+          date: mapped.date,
+          externalStatus: mapped.externalStatus,
+          operationType: mapped.operationType,
+          category: mapped.category,
+          installmentNumber: mapped.installmentNumber,
+          totalInstallments: mapped.totalInstallments,
+          currency: mapped.currency,
+          amountInAccountCurrency: mapped.amountInAccountCurrency,
+          updatedAt: now,
+        };
         db.update(pluggyTransactions)
-          .set({
-            description: mapped.description,
-            amount: mapped.amount,
-            type: mapped.type,
-            date: mapped.date,
-            externalStatus: mapped.externalStatus,
-            operationType: mapped.operationType,
-            category: mapped.category,
-            installmentNumber: mapped.installmentNumber,
-            totalInstallments: mapped.totalInstallments,
-            currency: mapped.currency,
-            amountInAccountCurrency: mapped.amountInAccountCurrency,
-            updatedAt: now,
-          })
+          .set(updatedFields)
           .where(eq(pluggyTransactions.id, existing.id))
           .run();
+        existingMap.set(dto.id, { ...existing, ...updatedFields });
         updated += 1;
         continue;
       }
@@ -152,15 +166,17 @@ function upsertStagingBatch(
       const statusChanged = existing.externalStatus !== mapped.externalStatus;
       const amountChanged = Math.abs(existing.amount - mapped.amount) > 0.009;
       if (statusChanged || amountChanged) {
+        const updatedFields = {
+          externalStatus: mapped.externalStatus,
+          amount: mapped.amount,
+          bankChangedAt: now,
+          updatedAt: now,
+        };
         db.update(pluggyTransactions)
-          .set({
-            externalStatus: mapped.externalStatus,
-            amount: mapped.amount,
-            bankChangedAt: now,
-            updatedAt: now,
-          })
+          .set(updatedFields)
           .where(eq(pluggyTransactions.id, existing.id))
           .run();
+        existingMap.set(dto.id, { ...existing, ...updatedFields });
         updated += 1;
       }
     }

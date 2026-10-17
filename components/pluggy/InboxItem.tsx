@@ -9,6 +9,7 @@ interface InboxItemProps {
   item: EnrichedStagingItem;
   selectionMode: boolean;
   selected: boolean;
+  gridItem?: boolean;
   onToggleSelect: (id: string) => void;
   onImport: (item: EnrichedStagingItem) => void;
   onEditAndImport: (item: EnrichedStagingItem) => void;
@@ -18,10 +19,11 @@ interface InboxItemProps {
   onApplyBankUpdate: (item: EnrichedStagingItem) => void;
 }
 
-export function InboxItem({
+function InboxItemComponent({
   item,
   selectionMode,
   selected,
+  gridItem = false,
   onToggleSelect,
   onImport,
   onEditAndImport,
@@ -60,12 +62,14 @@ export function InboxItem({
       activeOpacity={selectionMode ? 0.7 : 1}
       onPress={selectionMode ? () => onToggleSelect(staging.id) : undefined}
       onLongPress={() => onToggleSelect(staging.id)}
-      className="mb-3 rounded-2xl p-4"
+      className="mb-3 justify-between rounded-2xl p-4"
       style={{
+        flex: gridItem ? 1 : undefined,
         backgroundColor: colors.cardBackground,
         borderWidth: selected ? 1.5 : 1,
         borderColor: selected ? colors.primaryGold : colors.borderColor,
       }}>
+      <View>
       {/* Cabeçalho: checkbox (opcional), descrição e valor */}
       <View className="flex-row items-start justify-between" style={{ gap: 10 }}>
         {selectionMode && (
@@ -103,7 +107,7 @@ export function InboxItem({
             {formatCurrency(staging.amount)}
           </Text>
           <Text className="mt-0.5 text-[11px] text-light-text-secondary dark:text-dark-text-secondary">
-            {staging.externalStatus === 'PENDING' ? 'Pendente no banco' : 'Efetivada'}
+            {staging.externalStatus === 'PENDING' ? 'Pendente no banco' : 'Paga'}
           </Text>
         </View>
       </View>
@@ -190,7 +194,7 @@ export function InboxItem({
             <Feather name="refresh-cw" size={13} color={colors.primaryGold} />
             <Text className="flex-1 text-xs text-light-text-primary dark:text-dark-text-primary">
               Atualizada no banco ({formatCurrency(staging.amount)} ·{' '}
-              {staging.externalStatus === 'PENDING' ? 'Pendente' : 'Efetivada'})
+              {staging.externalStatus === 'PENDING' ? 'Pendente' : 'Paga'})
             </Text>
           </View>
           <TouchableOpacity
@@ -214,6 +218,7 @@ export function InboxItem({
           </Text>
         </Text>
       )}
+      </View>
 
       {/* Ações */}
       {staging.reviewStatus === 'pending' ? (
@@ -279,4 +284,7 @@ export function InboxItem({
     </TouchableOpacity>
   );
 }
+
+export const InboxItem = React.memo(InboxItemComponent);
+
 

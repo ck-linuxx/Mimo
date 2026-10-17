@@ -1,16 +1,14 @@
-import { eq } from 'drizzle-orm';
 import { db } from 'db/client';
 import {
   categories,
   type BankAccount,
   type Card,
   type Category,
-  type NewPluggyTransaction,
   type NewTransaction,
   type PluggyTransaction,
 } from 'db/schema';
 import { computeCardDueDate } from 'utils/cardDueDate';
-import type { PluggyTransactionDto } from './types';
+import type { PluggyTransactionDto } from 'services/pluggy/types';
 
 /**
  * Converte a transação da API da Pluggy em dados para upsert na tabela de staging (`pluggy_transactions`).
@@ -23,7 +21,10 @@ export function mapDtoToStagingValues(
   dto: PluggyTransactionDto,
   bankAccountId: string,
   now: number = Date.now()
-): Omit<NewPluggyTransaction, 'id' | 'reviewStatus' | 'importedTransactionId' | 'reviewedAt' | 'createdAt'> {
+): Omit<
+  PluggyTransaction,
+  'id' | 'reviewStatus' | 'importedTransactionId' | 'bankChangedAt' | 'reviewedAt' | 'createdAt'
+> {
   const parsedDate = Date.parse(dto.date);
   const dateMs = Number.isNaN(parsedDate) ? now : parsedDate;
   const rawAmount = dto.amountInAccountCurrency ?? dto.amount ?? 0;
