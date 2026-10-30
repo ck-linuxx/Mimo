@@ -44,7 +44,10 @@ async function get<T>(pathOrUrl: string, query?: Query, opts?: { silentAuthFail?
       });
     } catch (err) {
       if (__DEV__) {
-        console.error(`[Pluggy API Error] Falha de rede ao acessar ${pathOrUrl}:`, err);
+        console.warn(
+          `[Pluggy API] Falha de rede ao acessar ${pathOrUrl}:`,
+          err instanceof Error ? err.message : String(err)
+        );
       }
       const detail = err instanceof Error ? ` (${err.message})` : '';
       throw new PluggyError('network', `Sem conexão com a Pluggy${detail}.`);
@@ -52,17 +55,19 @@ async function get<T>(pathOrUrl: string, query?: Query, opts?: { silentAuthFail?
   };
 
   let response = await attempt(false);
-  if (response.status === 401) response = await attempt(true);
+  if (response.status === 401 && !opts?.silentAuthFail) {
+    response = await attempt(true);
+  }
 
   if (response.status === 401 || response.status === 403) {
     if (__DEV__ && !opts?.silentAuthFail) {
-      console.error(`[Pluggy API Error] Credenciais recusadas em ${pathOrUrl}: HTTP ${response.status}`);
+      console.warn(`[Pluggy API] Credenciais recusadas em ${pathOrUrl}: HTTP ${response.status}`);
     }
     throw new PluggyError('auth', 'Credenciais da Pluggy recusadas.', response.status);
   }
   if (response.status === 429) {
     if (__DEV__) {
-      console.error(`[Pluggy API Error] Rate limit em ${pathOrUrl}: HTTP 429`);
+      console.warn(`[Pluggy API] Rate limit em ${pathOrUrl}: HTTP 429`);
     }
     throw new PluggyError('rate_limit', 'Limite de requisições da Pluggy atingido.', 429);
   }
@@ -77,11 +82,11 @@ async function get<T>(pathOrUrl: string, query?: Query, opts?: { silentAuthFail?
     try {
       errorBody = await response.text();
       if (__DEV__) {
-        console.error(`[Pluggy API Error] Erro HTTP ${response.status} em ${pathOrUrl}:`, errorBody);
+        console.warn(`[Pluggy API] Erro HTTP ${response.status} em ${pathOrUrl}:`, errorBody);
       }
     } catch {
       if (__DEV__) {
-        console.error(`[Pluggy API Error] Erro HTTP ${response.status} em ${pathOrUrl}`);
+        console.warn(`[Pluggy API] Erro HTTP ${response.status} em ${pathOrUrl}`);
       }
     }
     throw new PluggyError('server', `Erro da Pluggy (HTTP ${response.status}). ${errorBody}`.trim(), response.status);
@@ -98,10 +103,13 @@ export async function getItem(itemId: string): Promise<PluggyItem> {
 
 /**
  * Descobre os itens (conexões) da conta Pluggy do usuário usando o cache do queryClient.
- * 1) Tenta `GET /v2/items` (requer permissão especial na Pluggy; por padrão retorna 401/403).
- * 2) Se falhar ou não retornar nada, utiliza os Item IDs informados manualmente pelo usuário.
+ * 1) Garante uma apiKey válida antes (se `/auth` falhar com 401/rede, interrompe imediatamente).
+ * 2) Tenta `GET /v2/items` (requer permissão especial na Pluggy; por padrão retorna 401/403).
+ * 3) Se `GET /v2/items` falhar ou não retornar nada, utiliza os Item IDs informados manualmente pelo usuário.
  */
 async function fetchItemsFromApi(): Promise<PluggyItem[]> {
+  await getApiKey();
+
   const items: PluggyItem[] = [];
   const seenIds = new Set<string>();
 
@@ -118,7 +126,7 @@ async function fetchItemsFromApi(): Promise<PluggyItem[]> {
       }
     }
   } catch (e) {
-    if (e instanceof PluggyError && e.kind === 'network') throw e;
+    if (e instanceof PluggyError && (e.kind === 'network' || e.kind === 'rate_limit')) throw e;
     // GET /v2/items é desabilitado por padrão pela Pluggy para planos de desenvolvedor
     // (retorna 401 ou 403 LIST_ITEMS_FEATURE_NOT_ENABLED). Prossegue para os Item IDs manuais.
   }
@@ -131,7 +139,10 @@ async function fetchItemsFromApi(): Promise<PluggyItem[]> {
           return await getItem(id);
         } catch (e) {
           if (__DEV__) {
-            console.error(`[Pluggy API] Erro ao buscar Item ID manual "${id}":`, e);
+            console.warn(
+              `[Pluggy API] Erro ao buscar Item ID manual "${id}":`,
+              e instanceof Error ? e.message : String(e)
+            );
           }
           if (e instanceof PluggyError && (e.kind === 'network' || e.kind === 'auth')) throw e;
           return null;

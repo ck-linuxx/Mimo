@@ -26,8 +26,8 @@ export function calcMonthlyInstallment(
 }
 
 /**
- * Monthly savings needed from today to reach a goal.
- * Used in the home card where "from now" is more relevant than "from start date".
+ * Monthly savings needed to reach a goal over its defined period (`startAt` -> `finishAt`).
+ * Falls back to `new Date()` as the start date only when `startAt` is not set.
  */
 export function calcMonthlyNeeded(goal: FinancialGoal): {
   monthlyNeeded: number;
@@ -38,7 +38,8 @@ export function calcMonthlyNeeded(goal: FinancialGoal): {
 
   let remainingMonths = 1;
   try {
-    remainingMonths = calcMonthsRange(new Date(), new Date(goal.finishAt!));
+    const startDate = goal.startAt ? new Date(goal.startAt) : new Date();
+    remainingMonths = calcMonthsRange(startDate, new Date(goal.finishAt!));
   } catch {
     remainingMonths = 1;
   }

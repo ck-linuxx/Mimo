@@ -40,6 +40,7 @@ export default function GoalEditScreen() {
   const colors = theme === 'dark' ? darkColors : lightColors;
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { formMaxWidth } = useBreakpoint();
 
   const { alertConfig, visible, hideAlert, showSuccess, showError } = useCustomAlert();
 
@@ -263,8 +264,6 @@ export default function GoalEditScreen() {
   const months = monthlyInstallment !== null ? calcMonthsRange(startAt, finishAt) : 0;
 
   // ─── Form ─────────────────────────────────────────────────────────────────
-
-  const { formMaxWidth } = useBreakpoint();
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 640}>

@@ -7,8 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { db } from 'db/client';
 import { eq } from 'drizzle-orm';
 import { financialGoals } from 'db/schema';
@@ -44,6 +43,7 @@ export default function GoalDetailScreen() {
   const colors = theme === 'dark' ? darkColors : lightColors;
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { formMaxWidth } = useBreakpoint();
 
   const [goal, setGoal] = useState<FinancialGoal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -175,8 +175,6 @@ export default function GoalDetailScreen() {
   const months = monthlyInstallment !== null
     ? calcMonthsRange(new Date(goal.startAt!), new Date(goal.finishAt!))
     : 0;
-
-  const { formMaxWidth } = useBreakpoint();
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.background }} maxWidth={formMaxWidth ?? 720}>
